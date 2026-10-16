@@ -1,0 +1,13 @@
+README.md
+pyproject.toml
+src/amos_free_cloud_mesh.egg-info/PKG-INFO
+src/amos_free_cloud_mesh.egg-info/SOURCES.txt
+src/amos_free_cloud_mesh.egg-info/dependency_links.txt
+src/amos_free_cloud_mesh.egg-info/top_level.txt
+src/amos_mesh/__init__.py
+src/amos_mesh/__main__.py
+src/amos_mesh/compatibility.py
+src/amos_mesh/compiler.py
+src/amos_mesh/models.py
+src/amos_mesh/providers.py
+tests/test_compiler.py
