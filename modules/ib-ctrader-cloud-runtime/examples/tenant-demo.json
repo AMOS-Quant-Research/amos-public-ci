@@ -1,0 +1,14 @@
+{
+  "tenant_id": "demo-customer-001",
+  "display_name": "Demo Customer",
+  "execution_mode": "shadow",
+  "owner_controls": ["revoke_access", "emergency_stop", "approve_apply"],
+  "providers": [
+    {"name": "github_actions", "enabled": true, "purpose": ["validation", "scheduled_jobs", "updates"], "delegated_role": "repo_admin_limited", "secret_refs": ["GITHUB_APP_INSTALLATION"]},
+    {"name": "cloudflare", "enabled": true, "purpose": ["telegram_webhook", "control_api", "notifications"], "delegated_role": "worker_deploy_only", "secret_refs": ["CLOUDFLARE_API_TOKEN"]},
+    {"name": "nvidia_nim", "enabled": true, "purpose": ["analysis_assist"], "delegated_role": "secret_reference_only", "secret_refs": ["NVIDIA_NIM_API_KEY"]},
+    {"name": "ctrader_cloud", "enabled": true, "purpose": ["managed_cbot_runtime", "runtime_status"], "delegated_role": "status_only", "secret_refs": []},
+    {"name": "free_vm", "enabled": false, "purpose": ["optional_mt5_bridge", "execution_relay"], "delegated_role": "runner_operator", "secret_refs": ["MESH_AGENT_ENROLLMENT_TOKEN"]},
+    {"name": "free_gpu", "enabled": true, "purpose": ["batch_research"], "delegated_role": "batch_submit_only", "secret_refs": []}
+  ]
+}
