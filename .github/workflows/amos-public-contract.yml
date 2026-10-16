@@ -1,0 +1,44 @@
+name: AMOS Public Safe CI Contract
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'ci_contract.py'
+      - 'tests/**'
+      - '.github/workflows/amos-public-contract.yml'
+permissions:
+  contents: read
+concurrency:
+  group: amos-public-safe-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  public-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Public synthetic-only stdlib unit tests
+        run: python -m unittest discover -s tests -p 'test_*.py' -v
+      - name: Emit strictly public synthetic evidence
+        run: |
+          mkdir -p artifacts
+          printf 'PUBLIC SYNTHETIC TEST FIXTURE ONLY\n' > artifacts/fixture.txt
+          python ci_contract.py --suite stdlib_smoke --fixture artifacts/fixture.txt --out artifacts/evidence.json
+          python - <<'PY'
+          import json
+          from ci_contract import validate,sha256_file
+          r=json.load(open("artifacts/evidence.json"))
+          assert validate(r)["status"]=="PUBLIC_SYNTHETIC_TEST_PASS"
+          assert r["artifact_sha256"]==sha256_file("artifacts/fixture.txt")
+          PY
+      - name: Upload public synthetic CI evidence only
+        uses: actions/upload-artifact@v4
+        with:
+          name: amos-public-safe-contract
+          path: |
+            artifacts/fixture.txt
+            artifacts/evidence.json
+          if-no-files-found: error
+          retention-days: 3
