@@ -28,4 +28,22 @@ jobs:
       - name: Compile public contracts
         run: python -m compileall -q quant_mentor_ci
       - name: Run synthetic contract tests
-        run: python -m unittest discover -s quant_mentor_ci -p 'test_*.py' -v
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p ci-evidence
+          python -m unittest discover -s quant_mentor_ci -p 'test_*.py' -v 2>&1 | tee ci-evidence/unittest.log
+      - name: Record scoped public CI receipt
+        run: |
+          python quant_mentor_ci/public_ci_receipt.py \
+            --log ci-evidence/unittest.log \
+            --commit "${{ github.sha }}" \
+            --run-id "${{ github.run_id }}" \
+            --exit-code 0 \
+            --out ci-evidence/public_ci_receipt.json
+      - name: Upload public-only evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: quant-mentor-public-evidence
+          path: ci-evidence/
+          retention-days: 14
