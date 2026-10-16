@@ -1,0 +1,31 @@
+name: AMOS Quant Mentor Public CI
+on:
+  push:
+    branches:
+      - feat/quant-mentor-public-ci
+    paths:
+      - 'quant_mentor_ci/**'
+      - '.github/workflows/quant-mentor-public-ci.yml'
+  pull_request:
+    paths:
+      - 'quant_mentor_ci/**'
+      - '.github/workflows/quant-mentor-public-ci.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: mentor-public-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  public-synthetic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile public contracts
+        run: python -m compileall -q quant_mentor_ci
+      - name: Run synthetic contract tests
+        run: python -m unittest discover -s quant_mentor_ci -p 'test_*.py' -v
