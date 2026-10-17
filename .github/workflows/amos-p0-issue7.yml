@@ -1,6 +1,12 @@
 name: AMOS P0 public synthetic Issue 7
 on:
   workflow_dispatch:
+  # One automatic verification run after the reviewed workflow fix is merged.
+  # No trigger on generated PR branches or unrelated main commits.
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/amos-p0-issue7.yml'
 permissions:
   contents: write
   issues: read
@@ -33,21 +39,37 @@ jobs:
           set -euo pipefail
           printf 'ANSWER = 7\n' > agent_result.py
           rm -f tests/test_agent_generated_constant.py
-          timeout --signal=TERM --kill-after=5s 180s opencode run --model opencode/nemotron-3.5-lightning-free --agent build 'Approved GitHub Issue #7. Create ONLY tests/test_agent_generated_constant.py. Use Python unittest; import ANSWER from agent_result; assert ANSWER == 7. No other edits.' > agent.log 2>&1 &
-          pid=$!
-          found=false
-          for i in $(seq 1 185); do
-            if [[ -s tests/test_agent_generated_constant.py ]] && grep -q 'Write tests/test_agent_generated_constant.py' agent.log; then
-              found=true; break
-            fi
-            if ! kill -0 "$pid" 2>/dev/null; then break; fi
-            sleep 1
-          done
-          if kill -0 "$pid" 2>/dev/null; then kill -TERM "$pid" 2>/dev/null || true; fi
-          wait "$pid" || true
-          if [[ "$found" != true ]]; then
-            echo "::error::MODEL_WRITE_NOT_VERIFIED"; exit 1
+          # Let the model complete naturally within a bounded 180s window.
+          # Do not require an exact English tool-log phrase: it is not a stable API.
+          set +e
+          timeout --signal=TERM --kill-after=5s 180s opencode run --model opencode/nemotron-3.5-lightning-free --agent build 'Approved GitHub Issue #7. Create ONLY tests/test_agent_generated_constant.py. Use Python unittest; import ANSWER from agent_result; assert ANSWER == 7. No other edits.' > agent.log 2>&1
+          model_rc=$?
+          set -e
+          echo "OpenCode process exit code: $model_rc"
+          # Print only a safe error category, never raw model logs or secrets.
+          model_failure="UNKNOWN"
+          if [[ "$model_rc" -eq 124 || "$model_rc" -eq 137 ]]; then
+            model_failure="TIMEOUT"
+          elif grep -Eiq 'rate.limit|too.many.requests|\\b429\\b' agent.log; then
+            model_failure="RATE_LIMIT"
+          elif grep -Eiq 'unauthorized|invalid.api.key|\\b401\\b|\\b403\\b' agent.log; then
+            model_failure="AUTH_OR_PERMISSION"
+          elif grep -Eiq 'model.not.found|unknown.model|not.available' agent.log; then
+            model_failure="MODEL_UNAVAILABLE"
           fi
+          if [[ "$model_rc" -ne 0 ]]; then
+            echo "::error::MODEL_PROCESS_FAILED exit_code=$model_rc category=$model_failure"
+            exit 1
+          fi
+          if [[ ! -s tests/test_agent_generated_constant.py ]]; then
+            echo "::error::MODEL_WRITE_NOT_VERIFIED missing_generated_test category=$model_failure"
+            exit 1
+          fi
+          if ! python3 -m unittest discover -s tests -p 'test_agent_generated_constant.py' -v; then
+            echo "::error::MODEL_GENERATED_TEST_FAILED"
+            exit 1
+          fi
+          echo "AI_GENERATED_TEST_PRESENT_AND_PASS"
           python3 - <<'PY'
           import json,pathlib
           p=pathlib.Path('amos-loop-evidence.json')
