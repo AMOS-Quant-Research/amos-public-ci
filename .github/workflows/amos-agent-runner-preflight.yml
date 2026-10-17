@@ -34,3 +34,15 @@ jobs:
             echo 'OPENCODE_CLI_AVAILABLE=false'
           fi
           echo 'No provider keys are accessed, no agent invocation occurs.'
+      - name: OpenCode zero-cost model smoke (public synthetic only)
+        shell: bash
+        timeout-minutes: 3
+        env:
+          OPENCODE_DISABLE_AUTOUPDATE: "true"
+        run: |
+          mkdir -p agent_sandbox
+          cd agent_sandbox
+          timeout 100s opencode run --model opencode/nemotron-3.5-lightning-free --agent build "Create a file named agent_result.py containing exactly: ANSWER = 7. Do not touch other files or execute external commands. This is a synthetic public test." > ../opencode_run.log 2>&1 || { cat ../opencode_run.log; exit 1; }
+          cat ../opencode_run.log
+          test -f agent_result.py
+          python3 -c "from agent_result import ANSWER; assert ANSWER == 7"
