@@ -1,6 +1,12 @@
 name: AMOS P0 public synthetic Issue 7
 on:
   workflow_dispatch:
+  # One automatic verification run after the reviewed workflow fix is merged.
+  # No trigger on generated PR branches or unrelated main commits.
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/amos-p0-issue7.yml'
 permissions:
   contents: write
   issues: read
