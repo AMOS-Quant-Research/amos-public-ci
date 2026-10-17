@@ -2,18 +2,30 @@ name: AMOS P0 public synthetic Issue 7
 on:
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
+  issues: read
+  pull-requests: write
+concurrency:
+  group: amos-public-issue-7
+  cancel-in-progress: false
 jobs:
   synthetic-agent:
     runs-on: ubuntu-latest
-    timeout-minutes: 7
+    timeout-minutes: 9
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Read approved Issue and lock task
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/issue7_worker.py issue
       - name: Contract tests
         run: python3 -m unittest discover -s tests -p 'test_issue7_policy.py' -v
-      - name: Install free OpenCode CLI
+      - name: Install OpenCode
         run: npm install --global opencode-ai && opencode --version
-      - name: Run bounded free agent for Issue 7
+      - name: Run bounded OpenCode free model
+        id: agent
         shell: bash
         env:
           OPENCODE_DISABLE_AUTOUPDATE: 'true'
@@ -21,29 +33,39 @@ jobs:
           set -euo pipefail
           printf 'ANSWER = 7\n' > agent_result.py
           rm -f tests/test_agent_generated_constant.py
-          timeout --signal=TERM --kill-after=5s 180s opencode run --model opencode/nemotron-3.5-lightning-free --agent build 'Issue #7: Create ONLY tests/test_agent_generated_constant.py. Python unittest: from agent_result import ANSWER; assert ANSWER == 7. Do not modify any other file.' > agent.log 2>&1 &
-          pid=$!
-          found=false
-          for i in $(seq 1 185); do
-            if [[ -s tests/test_agent_generated_constant.py ]]; then found=true; break; fi
-            if ! kill -0 "$pid" 2>/dev/null; then break; fi
-            sleep 1
-          done
-          if kill -0 "$pid" 2>/dev/null; then kill -TERM "$pid" || true; fi
-          wait "$pid" || true
-          if [[ "$found" != true ]]; then
-            echo "::error::AI_FILE_NOT_GENERATED"; cat agent.log; exit 1
+          set +e
+          timeout --signal=TERM --kill-after=5s 180s opencode run --model opencode/nemotron-3.5-lightning-free --agent build 'Approved GitHub Issue #7. Create ONLY tests/test_agent_generated_constant.py. Use Python unittest; import ANSWER from agent_result; assert ANSWER == 7. No other edits.' > agent.log 2>&1
+          rc=$?
+          set -e
+          echo "opencode_exit_code=$rc"
+          if [[ "$rc" -ne 0 || ! -s tests/test_agent_generated_constant.py ]]; then
+            echo "::error::MODEL_OR_FILE_NOT_VERIFIED"; exit 1
           fi
-          changed="$(git status --porcelain --untracked-files=all | sed -E 's/^...//' | grep -v -E '^(agent_result.py|agent.log|tests/test_agent_generated_constant.py)$' || true)"
-          if [[ -n "$changed" ]]; then echo "::error::OUT_OF_SCOPE_CHANGE"; echo "$changed"; exit 1; fi
-          python3 -m unittest discover -s tests -p 'test_agent_generated_constant.py' -v
-          echo "AI_GENERATED_FILE_ACCEPTED=true"
-      - uses: actions/upload-artifact@v4
+          python3 - <<'PY'
+          import json,pathlib
+          p=pathlib.Path('amos-loop-evidence.json')
+          d=json.loads(p.read_text())
+          d.update(agent_version="runtime-opencode",model_provider="opencode",model_name="nemotron-3.5-lightning-free",model_request_succeeded=True,model_response_evidence="agent.log (redacted before publication)",completion_state="PARTIAL")
+          p.write_text(json.dumps(d,indent=2))
+          PY
+      - name: Test and create AI-generated Draft PR
+        if: steps.agent.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/issue7_worker.py pr
+      - name: Report to existing central PR 42
         if: always()
+        env:
+          AMOS_CENTRAL_REPORT_TOKEN: ${{ secrets.AMOS_CENTRAL_REPORT_TOKEN }}
+        run: python3 scripts/issue7_worker.py report
+      - name: Upload evidence artifact
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          name: issue7-agent-evidence
+          name: amos-loop-evidence
           path: |
+            amos-loop-evidence.json
             agent.log
-            agent_result.py
             tests/test_agent_generated_constant.py
-          retention-days: 1
+          if-no-files-found: warn
+          retention-days: 7
