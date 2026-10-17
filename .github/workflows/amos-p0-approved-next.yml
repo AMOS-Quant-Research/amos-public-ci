@@ -77,7 +77,7 @@ jobs:
             model_rc=$?
             set -e
             if [[ "$model_rc" -eq 0 && -s tests/test_agent_issue_${{ inputs.issue_number }}.py ]]; then
-              if python3 -m unittest discover -s tests -p 'test_agent_generated_constant.py' -v; then
+              if python3 -m unittest discover -s tests -p 'test_agent_issue_${{ inputs.issue_number }}.py' -v; then
                 selected_model="$candidate"
                 echo "AI_GENERATED_TEST_PRESENT_AND_PASS"
                 break
@@ -117,6 +117,7 @@ jobs:
       - name: Report to existing central PR 42
         if: always()
         env:
+          GH_TOKEN: ${{ github.token }}
           AMOS_CENTRAL_REPORT_TOKEN: ${{ secrets.AMOS_CENTRAL_REPORT_TOKEN }}
         run: python3 scripts/approved_issue_worker.py report
       - name: Upload evidence artifact
