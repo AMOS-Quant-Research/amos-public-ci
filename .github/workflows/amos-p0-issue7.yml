@@ -1,15 +1,11 @@
 name: AMOS P0 public synthetic Issue 7
 on:
   workflow_dispatch:
-  # One automatic verification run after the reviewed workflow fix is merged.
-  # No trigger on generated PR branches or unrelated main commits.
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/amos-p0-issue7.yml'
+  # Issue #7 already produced Draft PR #15. Do not replay on a merge.
+  # A separately approved next-Issue worker will own subsequent execution.
 permissions:
   contents: write
-  issues: read
+  issues: write
   pull-requests: write
 concurrency:
   group: amos-public-issue-7
@@ -29,7 +25,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: python3 scripts/issue7_worker.py issue
       - name: Contract tests
-        run: python3 -m unittest discover -s tests -p 'test_issue7_policy.py' -v
+        run: |
+          python3 -m unittest discover -s tests -p 'test_issue7_policy.py' -v
+          python3 -m unittest discover -s tests -p 'test_report_fallback.py' -v
       - name: Install OpenCode
         run: npm install --global opencode-ai && opencode --version
       - name: Run bounded OpenCode free model
