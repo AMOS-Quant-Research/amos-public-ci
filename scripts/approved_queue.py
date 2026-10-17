@@ -139,7 +139,16 @@ def main():
         if not receipt_valid(run, issues, comments, prs, central_comments):
             print("BLOCKED_UNVERIFIED_PREDECESSOR: not dispatching next issue")
             return 0
-    elif event_name not in {"schedule", "workflow_dispatch"}:
+    elif event_name in {"schedule", "workflow_dispatch"}:
+        # The first queue item may bootstrap automatically. Subsequent items
+        # are ONLY triggered by a verified successful workflow_run receipt.
+        # A failed/blocked worker must not be skipped by the next hourly tick.
+        if any(DISPATCH_MARKER in (c.get("body") or "")
+               for issue_comments_list in comments.values()
+               for c in issue_comments_list):
+            print("BLOCKED_BOOTSTRAP_ALREADY_USED: require verified chain")
+            return 0
+    else:
         print("BLOCKED_UNSUPPORTED_EVENT")
         return 0
     # Prevent duplicate dispatch if a source workflow is already running.
@@ -154,10 +163,12 @@ def main():
         print("QUEUE_EMPTY_OR_UNAPPROVED")
         return 0
     # Dispatch via workflow_dispatch. GITHUB_TOKEN must have Actions:write.
-    gh("workflow", "run", WORKFLOW, "-R", REPO, "-f", "issue_number=" + str(candidate))
+    # Reserve before dispatch; failed dispatch stays BLOCKED rather than
+    # creating an untracked duplicate run on the next schedule tick.
     gh("api", "repos/" + REPO + "/issues/" + str(candidate) + "/comments",
        "-f", "body=" + DISPATCH_MARKER + " " + str(candidate) +
        " | controller-run=" + os.environ.get("GITHUB_RUN_ID", "unknown"))
+    gh("workflow", "run", WORKFLOW, "-R", REPO, "-f", "issue_number=" + str(candidate))
     print("DISPATCHED_APPROVED_SYNTHETIC_ISSUE", candidate)
     return 0
 
