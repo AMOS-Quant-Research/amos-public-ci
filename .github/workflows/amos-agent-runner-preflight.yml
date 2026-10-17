@@ -10,7 +10,7 @@ permissions:
 jobs:
   runner-preflight:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 6
     steps:
       - uses: actions/checkout@v4
       - name: Python unit checks
@@ -40,26 +40,20 @@ jobs:
         env:
           OPENCODE_DISABLE_AUTOUPDATE: "true"
         run: |
-          # Issue #5 authorizes writing tests/ only. Fixture is provided by CI, not AI.
+          # Public Issue #5 only permits tests/test_agent_generated_constant.py.
           printf 'ANSWER = 7\n' > agent_result.py
           rm -f tests/test_agent_generated_constant.py opencode_run.log
-          echo 'Starting bounded public synthetic Issue #5 agent task'
+          echo 'Starting bounded OpenCode model task'
           set +e
-          timeout --signal=TERM --kill-after=5s 160s opencode run --model opencode/nemotron-3.5-lightning-free --agent build "Implement public Issue #5. Only create tests/test_agent_generated_constant.py. It must use Python unittest, import ANSWER from agent_result, and assert ANSWER == 7. Do not modify any other file. Finish immediately." > opencode_run.log 2>&1 &
+          timeout --signal=TERM --kill-after=5s 160s opencode run --model opencode/nemotron-3.5-lightning-free --agent build "Create tests/test_agent_generated_constant.py with a Python unittest that imports ANSWER from agent_result and asserts ANSWER == 7. Only write that file. Finish immediately." > opencode_run.log 2>&1 &
           pid=$!
           set -e
           found=false
           for i in $(seq 1 165); do
-            if [ -f tests/test_agent_generated_constant.py ]; then
-              found=true
-              break
-            fi
-            if ! kill -0 "$pid" 2>/dev/null; then
-              break
-            fi
+            if [ -f tests/test_agent_generated_constant.py ]; then found=true; break; fi
+            if ! kill -0 "$pid" 2>/dev/null; then break; fi
             sleep 1
           done
-          # Stop the bounded process on every outcome.
           if kill -0 "$pid" 2>/dev/null; then kill -TERM "$pid" 2>/dev/null || true; fi
           set +e
           wait "$pid"
@@ -68,13 +62,12 @@ jobs:
           echo "AGENT_EXIT_CODE=$agent_exit"
           cat opencode_run.log
           if [ "$found" != true ]; then
-            echo "BLOCKED: OpenCode did not generate authorized test in time" >&2
+            echo "BLOCKED: free model did not write Issue #5 test in 160s" >&2
             exit 1
           fi
           unexpected="$(git status --porcelain --untracked-files=all | sed -E 's/^...//' | grep -v -E '^(agent_result.py|tests/test_agent_generated_constant.py|opencode_run.log)$' || true)"
           if [ -n "$unexpected" ]; then
-            echo "BLOCKED: out-of-scope writes" >&2
-            printf '%s\n' "$unexpected" >&2
+            echo "BLOCKED: unexpected paths $unexpected" >&2
             exit 1
           fi
           python3 -m unittest discover -s tests -v
