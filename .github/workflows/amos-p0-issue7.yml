@@ -52,7 +52,7 @@ jobs:
           import json,pathlib
           p=pathlib.Path('amos-loop-evidence.json')
           d=json.loads(p.read_text())
-          d.update(agent_version="runtime-opencode",model_provider="opencode",model_name="nemotron-3.5-lightning-free",model_request_succeeded=True,model_response_evidence="agent.log (redacted before publication)",completion_state="PARTIAL")
+          d.update(agent_version="runtime-opencode",model_provider="opencode",model_name="nemotron-3.5-lightning-free",model_request_succeeded=True,model_response_evidence="agent.log (runner-local only; never uploaded)",completion_state="PARTIAL")
           p.write_text(json.dumps(d,indent=2))
           PY
       - name: Test and create AI-generated Draft PR
@@ -72,7 +72,6 @@ jobs:
           name: amos-loop-evidence
           path: |
             amos-loop-evidence.json
-            agent.log
             tests/test_agent_generated_constant.py
           if-no-files-found: warn
           retention-days: 7
