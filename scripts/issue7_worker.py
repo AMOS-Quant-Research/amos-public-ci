@@ -57,10 +57,10 @@ def commit_and_pr():
     subprocess.run(["git", "config", "user.name", "github-actions[bot]"], check=True)
     subprocess.run(["git", "config", "user.email", "41898282+github-actions[bot]@users.noreply.github.com"], check=True)
     subprocess.run(["git", "checkout", "-b", branch], check=True)
-    subprocess.run(["git", "add", "--", str(FILE)], check=True)
+    subprocess.run(["git", "add", "--", str(FILE), "agent_result.py"], check=True)
     subprocess.run(["git", "commit", "-m", f"test(ai): Issue #{ISSUE} generated acceptance test"], check=True)
     sha = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
-    record(changed_commit_sha=sha, changed_paths=[str(FILE)])
+    record(changed_commit_sha=sha, changed_paths=[str(FILE), "agent_result.py"])
     subprocess.run(["git", "push", "origin", branch], check=True)
     existing = gh("pr", "list", "-R", REPO, "--head", branch, "--json", "url", "--jq", ".[0].url", check=False)
     if not existing:
