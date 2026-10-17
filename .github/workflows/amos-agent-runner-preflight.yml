@@ -34,42 +34,32 @@ jobs:
             echo 'OPENCODE_CLI_AVAILABLE=false'
           fi
           echo 'No provider credentials are used in this public test.'
-      - name: OpenCode generates and validates Issue #5 synthetic code
+      - name: OpenCode generates authorized Issue #5 test (bounded)
         shell: bash
         timeout-minutes: 4
         env:
           OPENCODE_DISABLE_AUTOUPDATE: "true"
         run: |
-          rm -f agent_result.py tests/test_agent_generated_constant.py opencode_run.log
-          echo 'Launching public synthetic OpenCode task for Issue #5 (no credentials)'
+          # Issue #5 authorizes writing tests/ only. Fixture is provided by CI, not AI.
+          printf 'ANSWER = 7\n' > agent_result.py
+          rm -f tests/test_agent_generated_constant.py opencode_run.log
+          echo 'Starting bounded public synthetic Issue #5 agent task'
           set +e
-          timeout --signal=TERM --kill-after=5s 160s opencode run --model opencode/nemotron-3.5-lightning-free --agent build "Implement public Issue #5. Create exactly two files: agent_result.py containing exactly ANSWER = 7, and tests/test_agent_generated_constant.py containing exactly a Python unittest that starts with import unittest, then uses the literal line from agent_result import ANSWER, and asserts ANSWER == 7. The repository root is importable directly; do not use any package name. Do not modify or create any other files. Do not use network. Finish immediately." > opencode_run.log 2>&1 &
+          timeout --signal=TERM --kill-after=5s 160s opencode run --model opencode/nemotron-3.5-lightning-free --agent build "Implement public Issue #5. Only create tests/test_agent_generated_constant.py. It must use Python unittest, import ANSWER from agent_result, and assert ANSWER == 7. Do not modify any other file. Finish immediately." > opencode_run.log 2>&1 &
           pid=$!
           set -e
           found=false
           for i in $(seq 1 165); do
-            if [ -f agent_result.py ] && [ -f tests/test_agent_generated_constant.py ]; then
+            if [ -f tests/test_agent_generated_constant.py ]; then
               found=true
-              echo "AGENT_ISSUE_5_FILES_CREATED=true"
               break
             fi
             if ! kill -0 "$pid" 2>/dev/null; then
-              echo "AGENT_PROCESS_ENDED_BEFORE_FILES=true"
               break
             fi
             sleep 1
           done
-          if [ "$found" != true ]; then
-            echo "ERROR: no complete verified model-generated files" >&2
-            exit 1
-          fi
-          unexpected="$(git status --porcelain | sed -E 's/^...//' | grep -v -E '^(agent_result.py|tests/test_agent_generated_constant.py|opencode_run.log)$' || true)"
-          if [ -n "$unexpected" ]; then
-            echo "ERROR: generated unexpected paths:" >&2
-            echo "$unexpected" >&2
-            exit 1
-          fi
-          python3 -m unittest discover -s tests -v
+          # Stop the bounded process on every outcome.
           if kill -0 "$pid" 2>/dev/null; then kill -TERM "$pid" 2>/dev/null || true; fi
           set +e
           wait "$pid"
@@ -77,7 +67,19 @@ jobs:
           set -e
           echo "AGENT_EXIT_CODE=$agent_exit"
           cat opencode_run.log
+          if [ "$found" != true ]; then
+            echo "BLOCKED: OpenCode did not generate authorized test in time" >&2
+            exit 1
+          fi
+          unexpected="$(git status --porcelain --untracked-files=all | sed -E 's/^...//' | grep -v -E '^(agent_result.py|tests/test_agent_generated_constant.py|opencode_run.log)$' || true)"
+          if [ -n "$unexpected" ]; then
+            echo "BLOCKED: out-of-scope writes" >&2
+            printf '%s\n' "$unexpected" >&2
+            exit 1
+          fi
+          python3 -m unittest discover -s tests -v
           echo "AGENT_ISSUE_5_TEST_SUCCESS=true"
+          echo "AGENT_CLEAN_EXIT_UNVERIFIED=true"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
