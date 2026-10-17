@@ -15,6 +15,11 @@ jobs:
       - uses: actions/checkout@v4
       - name: Python unit checks
         run: python3 -m unittest discover -s tests -p 'test_runner_preflight.py' -v
+      - name: Install OpenCode CLI without credentials
+        shell: bash
+        run: |
+          npm install --global opencode-ai
+          opencode --version
       - name: Agent CLI availability (diagnostic only)
         shell: bash
         run: |
