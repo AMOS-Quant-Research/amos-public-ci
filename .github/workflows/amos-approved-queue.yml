@@ -1,0 +1,32 @@
+name: AMOS approved synthetic queue controller
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_run:
+    workflows:
+      - AMOS P0 approved synthetic next issue
+    types:
+      - completed
+permissions:
+  actions: write
+  contents: read
+  issues: write
+  pull-requests: read
+concurrency:
+  group: amos-approved-queue-global
+  cancel-in-progress: false
+jobs:
+  dispatch-approved:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Queue controller unit tests
+        run: python3 -m unittest discover -s tests -p 'test_approved_queue.py' -v
+      - name: Dispatch next explicitly approved public synthetic Issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          AMOS_CENTRAL_REPORT_TOKEN: ${{ secrets.AMOS_CENTRAL_REPORT_TOKEN }}
+        run: python3 scripts/approved_queue.py
