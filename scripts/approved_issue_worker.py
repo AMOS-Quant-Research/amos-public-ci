@@ -21,8 +21,10 @@ KEY = f"{REPO}:{RUN}:{ATTEMPT}:{ISSUE}"
 
 def gh(*args, token=None, check=True):
     env = dict(os.environ)
-    if token is not None:
+    if token:
         env["GH_TOKEN"] = token
+    elif not env.get("GH_TOKEN"):
+        raise RuntimeError("GH_TOKEN is required for public fallback reporting")
     p = subprocess.run(["gh", *args], text=True, capture_output=True, env=env)
     if check and p.returncode:
         raise RuntimeError(f"GitHub command failed (rc={p.returncode}): {' '.join(args[:3])}; {p.stderr[:200]}")
