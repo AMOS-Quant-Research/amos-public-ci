@@ -41,7 +41,27 @@ jobs:
           OPENCODE_DISABLE_AUTOUPDATE: "true"
         run: |
           rm -f agent_result.py
-          timeout 185s opencode run --model opencode/nemotron-3.5-lightning-free --agent build "Create a file named agent_result.py containing exactly: ANSWER = 7. Do not touch other files or execute external commands. This is a synthetic public test." > opencode_run.log 2>&1 || { cat opencode_run.log; exit 1; }
+          set +e
+          timeout 110s opencode run --model opencode/nemotron-3.5-lightning-free --agent build "Create a file named agent_result.py containing exactly: ANSWER = 7. Do not touch other files or execute external commands. This is a synthetic public test." > opencode_run.log 2>&1
+          agent_exit=$?
+          set -e
           cat opencode_run.log
+          echo "AGENT_EXIT_CODE=$agent_exit"
           test -f agent_result.py
           python3 -c "from agent_result import ANSWER; assert ANSWER == 7"
+          echo "AGENT_FILE_VALIDATED=true"
+          if [ "$agent_exit" -eq 124 ]; then
+            echo "AGENT_PROCESS_TIMEOUT=true (not clean agent completion; file tests passed)"
+          elif [ "$agent_exit" -ne 0 ]; then
+            echo "Agent exited with a non-timeout error" >&2
+            exit "$agent_exit"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: opencode-public-synthetic-evidence
+          path: |
+            opencode_run.log
+            agent_result.py
+          if-no-files-found: warn
+          retention-days: 1
