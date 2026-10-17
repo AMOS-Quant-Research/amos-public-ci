@@ -53,7 +53,7 @@ jobs:
               fast = any(k in n.lower() for k in ("mini", "flash", "small", "fast", "haiku", "nano"))
               return (n == previous, not fast, n)
           selected = sorted(free, key=rank)[:2]
-          Path("model-candidates.txt").write_text("\\n".join(selected) + ("\\n" if selected else ""))
+          Path("model-candidates.txt").write_text("\n".join(selected) + ("\n" if selected else ""))
           print("Discovered free models:", len(free), "; bounded candidates:", len(selected))
           PY
           mapfile -t candidates < model-candidates.txt
@@ -94,6 +94,7 @@ jobs:
             echo "::error::NO_VERIFIED_MODEL_WRITE last_category=$model_failure"
             exit 1
           fi
+          rm -f available-models.txt model-discovery.log model-candidates.txt
           export SELECTED_MODEL="$selected_model"
           python3 - <<'PY'
           import json,pathlib
