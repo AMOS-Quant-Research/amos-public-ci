@@ -1,0 +1,131 @@
+name: AMOS P0 approved synthetic next issue
+on:
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: 'Approved NEW public synthetic Issue number (never #7)'
+        required: true
+        type: number
+        default: 17
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+concurrency:
+  group: amos-public-next-${{ inputs.issue_number }}
+  cancel-in-progress: false
+jobs:
+  synthetic-agent:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      AMOS_ISSUE_NUMBER: ${{ inputs.issue_number }}
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Read approved Issue and lock task
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/approved_issue_worker.py issue
+      - name: Contract tests
+        run: |
+          python3 -m unittest discover -s tests -p 'test_issue7_policy.py' -v
+          python3 -m unittest discover -s tests -p 'test_report_fallback.py' -v
+      - name: Install OpenCode
+        run: npm install --global opencode-ai && opencode --version
+      - name: Run bounded OpenCode free model
+        id: agent
+        shell: bash
+        env:
+          OPENCODE_DISABLE_AUTOUPDATE: 'true'
+        run: |
+          set -euo pipefail
+          printf 'ANSWER = %s\n' "$AMOS_ISSUE_NUMBER" > agent_result.py
+          rm -f "tests/test_agent_issue_${{ inputs.issue_number }}.py"
+          # This is a new Issue, never replay #7. Approval gate ran first.
+          # Discover models offered by the installed CLI, rather than assuming
+          # that a model from a previous run is still available or responsive.
+          # Limit discovery and each model call; never loop without bounds.
+          timeout 20s opencode models opencode > available-models.txt 2> model-discovery.log || true
+          python3 - <<'PY'
+          from pathlib import Path
+          names = [line.strip() for line in Path("available-models.txt").read_text().splitlines()]
+          free = sorted({n for n in names if n.startswith("opencode/") and n.endswith("-free")})
+          previous = "opencode/nemotron-3.5-lightning-free"
+          # Prefer small/fast candidates. Do not retry the timed-out model first.
+          def rank(n):
+              fast = any(k in n.lower() for k in ("mini", "flash", "small", "fast", "haiku", "nano"))
+              return (n == previous, not fast, n)
+          selected = sorted(free, key=rank)[:2]
+          Path("model-candidates.txt").write_text("\n".join(selected) + ("\n" if selected else ""))
+          print("Discovered free models:", len(free), "; bounded candidates:", len(selected))
+          PY
+          mapfile -t candidates < model-candidates.txt
+          if [[ "${#candidates[@]}" -eq 0 ]]; then
+            echo "::error::NO_DISCOVERABLE_FREE_MODEL"
+            exit 1
+          fi
+          selected_model=""
+          model_failure="UNKNOWN"
+          for candidate in "${candidates[@]}"; do
+            echo "Attempting available free model: $candidate"
+            rm -f tests/test_agent_issue_${{ inputs.issue_number }}.py
+            set +e
+            timeout --signal=TERM --kill-after=5s 75s opencode run --model "$candidate" --agent build 'Approved GitHub Issue #${{ inputs.issue_number }}. Create ONLY tests/test_agent_issue_${{ inputs.issue_number }}.py. Use Python unittest; import ANSWER from agent_result; assert ANSWER == ${{ inputs.issue_number }}. No other edits.' > agent.log 2>&1
+            model_rc=$?
+            set -e
+            if [[ "$model_rc" -eq 0 && -s tests/test_agent_issue_${{ inputs.issue_number }}.py ]]; then
+              if python3 -m unittest discover -s tests -p 'test_agent_generated_constant.py' -v; then
+                selected_model="$candidate"
+                echo "AI_GENERATED_TEST_PRESENT_AND_PASS"
+                break
+              fi
+              model_failure="GENERATED_TEST_FAILED"
+            elif [[ "$model_rc" -eq 124 || "$model_rc" -eq 137 ]]; then
+              model_failure="TIMEOUT"
+            elif grep -Eiq 'rate.limit|too.many.requests|429' agent.log; then
+              model_failure="RATE_LIMIT"
+            elif grep -Eiq 'unauthorized|invalid.api.key|401|403' agent.log; then
+              model_failure="AUTH_OR_PERMISSION"
+            elif grep -Eiq 'model.not.found|unknown.model|not.available' agent.log; then
+              model_failure="MODEL_UNAVAILABLE"
+            else
+              model_failure="MODEL_PROCESS_OR_WRITE_FAILED"
+            fi
+            echo "::warning::Model attempt failed category=$model_failure exit_code=$model_rc"
+          done
+          if [[ -z "$selected_model" ]]; then
+            echo "::error::NO_VERIFIED_MODEL_WRITE last_category=$model_failure"
+            exit 1
+          fi
+          rm -f available-models.txt model-discovery.log model-candidates.txt
+          export SELECTED_MODEL="$selected_model"
+          python3 - <<'PY'
+          import json,pathlib
+          p=pathlib.Path('amos-loop-evidence.json')
+          d=json.loads(p.read_text())
+          d.update(agent_version="runtime-opencode",model_provider="opencode",model_name=__import__("os").environ["SELECTED_MODEL"],model_request_succeeded=True,model_response_evidence="agent.log (runner-local only; never uploaded)",completion_state="PARTIAL")
+          p.write_text(json.dumps(d,indent=2))
+          PY
+      - name: Test and create AI-generated Draft PR
+        if: steps.agent.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/approved_issue_worker.py pr
+      - name: Report to existing central PR 42
+        if: always()
+        env:
+          AMOS_CENTRAL_REPORT_TOKEN: ${{ secrets.AMOS_CENTRAL_REPORT_TOKEN }}
+        run: python3 scripts/approved_issue_worker.py report
+      - name: Upload evidence artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: amos-loop-evidence
+          path: |
+            amos-loop-evidence.json
+            tests/test_agent_issue_${{ inputs.issue_number }}.py
+          if-no-files-found: warn
+          retention-days: 7
