@@ -43,7 +43,7 @@ jobs:
           rm -f agent_result.py tests/test_agent_generated_constant.py opencode_run.log
           echo 'Launching public synthetic OpenCode task for Issue #5 (no credentials)'
           set +e
-          timeout --signal=TERM --kill-after=5s 160s opencode run --model opencode/nemotron-3.5-lightning-free --agent build "Implement public Issue #5. Create exactly two files: agent_result.py containing exactly ANSWER = 7, and tests/test_agent_generated_constant.py containing a unittest that imports ANSWER from agent_result and asserts ANSWER == 7. Do not modify or create any other files. Do not use network. Finish immediately." > opencode_run.log 2>&1 &
+          timeout --signal=TERM --kill-after=5s 160s opencode run --model opencode/nemotron-3.5-lightning-free --agent build "Implement public Issue #5. Create exactly two files: agent_result.py containing exactly ANSWER = 7, and tests/test_agent_generated_constant.py containing exactly a Python unittest that starts with import unittest, then uses the literal line from agent_result import ANSWER, and asserts ANSWER == 7. The repository root is importable directly; do not use any package name. Do not modify or create any other files. Do not use network. Finish immediately." > opencode_run.log 2>&1 &
           pid=$!
           set -e
           found=false
