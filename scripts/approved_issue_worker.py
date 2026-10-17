@@ -6,7 +6,10 @@ import pathlib
 import subprocess
 import sys
 
-ISSUE = int(os.environ.get("AMOS_ISSUE_NUMBER", "17"))
+raw_issue = os.environ.get("AMOS_ISSUE_NUMBER", "17")
+if not raw_issue.isascii() or not raw_issue.isdecimal():
+    raise SystemExit("AMOS_ISSUE_NUMBER must be an ASCII integer such as 17")
+ISSUE = int(raw_issue)
 if ISSUE < 17 or ISSUE == 7:
     raise SystemExit("Only new synthetic issues >=17 are permitted; Issue #7 is frozen")
 REPO = "AMOS-Quant-Research/amos-public-ci"
