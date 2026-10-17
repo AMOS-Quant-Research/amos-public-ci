@@ -4,6 +4,8 @@ on:
     paths:
       - '.github/workflows/amos-agent-runner-preflight.yml'
       - 'tests/test_runner_preflight.py'
+      - 'tests/test_amos_loop_verifier.py'
+      - 'tools/amos_loop_verifier.py'
   workflow_dispatch:
 permissions:
   contents: read
@@ -14,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Python unit checks
-        run: python3 -m unittest discover -s tests -p 'test_runner_preflight.py' -v
+        run: python3 -m unittest discover -s tests -p 'test_*.py' -v
       - name: Install OpenCode CLI without credentials
         shell: bash
         run: |
@@ -35,6 +37,8 @@ jobs:
           fi
           echo 'No provider credentials are used in this public test.'
       - name: OpenCode generates authorized Issue #6 constant (bounded)
+        # PR CI is test-only: never spend model quota or expose secrets to PR code.
+        if: github.event_name == 'workflow_dispatch'
         shell: bash
         timeout-minutes: 4
         env:
