@@ -18,19 +18,22 @@ DISPATCH_MARKER = "AMOS-QUEUE-DISPATCH:"
 MAX_SCAN = 100
 
 
-def gh(*args):
-    proc = subprocess.run(["gh", *args], capture_output=True, text=True, check=False)
+def gh(*args, token=None):
+    env = dict(os.environ)
+    if token:
+        env["GH_TOKEN"] = token
+    proc = subprocess.run(["gh", *args], capture_output=True, text=True, check=False, env=env)
     if proc.returncode:
         raise RuntimeError("GitHub request failed: " + " ".join(args[:3]) +
                            " (rc=" + str(proc.returncode) + ")")
     return proc.stdout.strip()
 
 
-def api(path, paginate=False):
+def api(path, paginate=False, token=None):
     args = ["api", path]
     if paginate:
         args.append("--paginate")
-    raw = gh(*args)
+    raw = gh(*args, token=token)
     if not raw:
         return []
     if paginate:
@@ -93,7 +96,7 @@ def receipt_valid(run, issues, comments_by_issue, prs, central_comments):
             if "AMOS-REPORT-KEY: " + key not in body:
                 continue
             sha = re.search(r"(?m)^Commit: ([0-9a-f]{40})$", body)
-            pr = re.search(r"(?m)^Draft PR: (https://github.com/[^\\s]+/pull/\\d+)$", body)
+            pr = re.search(r"(?m)^Draft PR: (https://github.com/[^\s]+/pull/\d+)$", body)
             if not (sha and pr and "AI model call: True" in body
                     and "Tests exit: 0" in body
                     and "Completion: PARTIAL_AWAITING_CENTRAL_VERIFICATION" in body):
@@ -132,7 +135,7 @@ def main():
             print("BLOCKED_MISSING_CROSS_REPO_TOKEN: no central receipt verification")
             return 0
         central_comments = api("repos/" + CENTRAL + "/issues/42/comments?per_page=100",
-                               paginate=True)
+                               paginate=True, token=central_token)
         if not receipt_valid(run, issues, comments, prs, central_comments):
             print("BLOCKED_UNVERIFIED_PREDECESSOR: not dispatching next issue")
             return 0
