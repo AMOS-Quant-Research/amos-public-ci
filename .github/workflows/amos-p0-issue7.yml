@@ -33,13 +33,20 @@ jobs:
           set -euo pipefail
           printf 'ANSWER = 7\n' > agent_result.py
           rm -f tests/test_agent_generated_constant.py
-          set +e
-          timeout --signal=TERM --kill-after=5s 180s opencode run --model opencode/nemotron-3.5-lightning-free --agent build 'Approved GitHub Issue #7. Create ONLY tests/test_agent_generated_constant.py. Use Python unittest; import ANSWER from agent_result; assert ANSWER == 7. No other edits.' > agent.log 2>&1
-          rc=$?
-          set -e
-          echo "opencode_exit_code=$rc"
-          if [[ "$rc" -ne 0 || ! -s tests/test_agent_generated_constant.py ]]; then
-            echo "::error::MODEL_OR_FILE_NOT_VERIFIED"; exit 1
+          timeout --signal=TERM --kill-after=5s 180s opencode run --model opencode/nemotron-3.5-lightning-free --agent build 'Approved GitHub Issue #7. Create ONLY tests/test_agent_generated_constant.py. Use Python unittest; import ANSWER from agent_result; assert ANSWER == 7. No other edits.' > agent.log 2>&1 &
+          pid=$!
+          found=false
+          for i in $(seq 1 185); do
+            if [[ -s tests/test_agent_generated_constant.py ]] && grep -q 'Write tests/test_agent_generated_constant.py' agent.log; then
+              found=true; break
+            fi
+            if ! kill -0 "$pid" 2>/dev/null; then break; fi
+            sleep 1
+          done
+          if kill -0 "$pid" 2>/dev/null; then kill -TERM "$pid" 2>/dev/null || true; fi
+          wait "$pid" || true
+          if [[ "$found" != true ]]; then
+            echo "::error::MODEL_WRITE_NOT_VERIFIED"; exit 1
           fi
           python3 - <<'PY'
           import json,pathlib
