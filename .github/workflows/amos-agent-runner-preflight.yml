@@ -41,7 +41,7 @@ jobs:
           OPENCODE_DISABLE_AUTOUPDATE: "true"
         run: |
           # Issue #6 allows one public-safe file only; no NIM or private code.
-          rm -f agent_result.py opencode_run.log
+          rm -f agent_result.py opencode_run.log amos-loop-evidence.json
           set +e
           timeout --signal=TERM --kill-after=5s 160s opencode run --model opencode/nemotron-3.5-lightning-free --agent build "Issue #6: Create exactly one file agent_result.py in the current repository root containing exactly ANSWER = 7 followed by a newline. Do not modify any other file. Finish immediately." > opencode_run.log 2>&1 &
           pid=$!
@@ -81,6 +81,31 @@ jobs:
           print("AGENT_ISSUE_6_FILE_VALIDATED=true")
           PY
           echo "AGENT_CLEAN_EXIT=$([ "$agent_exit" -eq 0 ] && echo true || echo false)"
+          python3 - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          data = Path("agent_result.py").read_bytes()
+          evidence = {
+              "schema_version": "amos-loop-evidence.v1",
+              "task_id": "AMOS-P0-ISSUE-6",
+              "issue_url": "https://github.com/AMOS-Quant-Research/amos-public-ci/issues/6",
+              "runner_repo": os.environ["GITHUB_REPOSITORY"],
+              "workflow_run_id": os.environ["GITHUB_RUN_ID"],
+              "workflow_attempt": os.environ["GITHUB_RUN_ATTEMPT"],
+              "agent_name": "OpenCode",
+              "model_name": "opencode/nemotron-3.5-lightning-free",
+              "generated_file": "agent_result.py",
+              "generated_sha256": hashlib.sha256(data).hexdigest(),
+              "test_exit_code": 0,
+              "ai_generated_commit_sha": None,
+              "draft_pr_url": None,
+              "central_report_comment_url": None,
+              "completion_state": "PARTIAL",
+              "single_loop_verified": False
+          }
+          Path("amos-loop-evidence.json").write_text(json.dumps(evidence, indent=2) + "\n")
+          print("EVIDENCE_JSON_CREATED=true")
+          PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -88,5 +113,6 @@ jobs:
           path: |
             opencode_run.log
             agent_result.py
+            amos-loop-evidence.json
           if-no-files-found: warn
           retention-days: 1
