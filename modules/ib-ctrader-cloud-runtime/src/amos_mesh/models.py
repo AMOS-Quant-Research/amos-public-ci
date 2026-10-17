@@ -26,9 +26,12 @@ class ProviderConfig:
         name = str(value["name"])
         if name not in SUPPORTED_PROVIDERS:
             raise ValueError(f"unsupported provider: {name}")
+        enabled = value.get("enabled", True)
+        if not isinstance(enabled, bool):
+            raise ValueError("provider enabled must be a JSON boolean")
         return cls(
             name=name,
-            enabled=bool(value.get("enabled", True)),
+            enabled=enabled,
             purpose=tuple(value.get("purpose", [])),
             delegated_role=str(value.get("delegated_role", "none")),
             secret_refs=tuple(value.get("secret_refs", [])),
