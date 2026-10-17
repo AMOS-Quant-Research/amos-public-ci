@@ -50,9 +50,18 @@ def commit_and_pr():
                     "-p", "test_agent_generated_constant.py", "-v"], check=True)
     record(test_exit_code=0, test_run_url=f"https://github.com/{REPO}/actions/runs/{RUN}")
     status = subprocess.check_output(["git", "status", "--porcelain", "--untracked-files=all"], text=True)
+    # Python unittest creates untracked __pycache__/*.pyc files on runners.
+    # These are runtime artifacts, not AI source edits. Ignore ONLY untracked
+    # cache files; never ignore tracked edits or other out-of-scope paths.
     paths = [line[3:] for line in status.splitlines()]
     allowed = {str(FILE), "agent_result.py", "agent.log", "amos-loop-evidence.json"}
-    assert all(p in allowed for p in paths), f"Out-of-scope changes: {paths}"
+    def runtime_cache(line):
+        path = pathlib.PurePosixPath(line[3:])
+        return (line.startswith("?? ") and "__pycache__" in path.parts
+                and path.suffix in {".pyc", ".pyo"})
+    violations = [line[3:] for line in status.splitlines()
+                  if line[3:] not in allowed and not runtime_cache(line)]
+    assert not violations, f"Out-of-scope changes: {violations}"
     branch = f"amos/issue-{ISSUE}-run-{RUN}-attempt-{ATTEMPT}"
     subprocess.run(["git", "config", "user.name", "github-actions[bot]"], check=True)
     subprocess.run(["git", "config", "user.email", "41898282+github-actions[bot]@users.noreply.github.com"], check=True)
