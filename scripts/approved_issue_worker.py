@@ -91,14 +91,12 @@ def commit_and_pr():
     record(draft_pr_url=url, completion_state="PARTIAL_AWAITING_CENTRAL_VERIFICATION")
 
 def central_report():
-    """Publish an auditable receipt; never claim central ingestion without it."""
+    """Publish source receipt AND authenticated central receipt, without conflating them."""
     p = pathlib.Path("amos-loop-evidence.json")
     if not p.exists():
         record()
     d = json.loads(p.read_text())
     token = os.environ.get("AMOS_CENTRAL_REPORT_TOKEN", "")
-    destination = CENTRAL if token else REPO
-    number = 42 if token else ISSUE
     key = f"AMOS-REPORT-KEY: {KEY}"
     body = (
         f"AMOS P0 public synthetic evidence\n{key}\n"
@@ -109,24 +107,25 @@ def central_report():
         f"Tests exit: {d['test_exit_code']}\n"
         f"Completion: {d['completion_state']}\n"
         f"Artifact: {d['workflow_run_url']}#artifacts\n"
-        f"Central ingestion: {'REQUESTED' if token else 'BLOCKED_MISSING_CROSS_REPO_TOKEN'}\n"
         "This is synthetic evidence, NOT a financial validation or live trade."
     )
-    # A public same-repo issue comment is a durable fallback. It is NOT
-    # equivalent to a central PR #42 receipt and must never be labeled as such.
-    prior = json.loads(gh("api", f"repos/{destination}/issues/{number}/comments?per_page=100",
-                          token=token if token else None))
-    match = next((x for x in prior if key in x.get("body", "")), None)
-    if match is None:
-        match = json.loads(gh("api", f"repos/{destination}/issues/{number}/comments",
-                              "-f", f"body={body}", token=token if token else None))
+    def publish(destination, number, content, auth=None):
+        prior = json.loads(gh("api", f"repos/{destination}/issues/{number}/comments?per_page=100",
+                              token=auth))
+        match = next((x for x in prior if key in x.get("body", "")), None)
+        if match is None:
+            match = json.loads(gh("api", f"repos/{destination}/issues/{number}/comments",
+                                  "-f", f"body={content}", token=auth))
+        return match["html_url"]
+    public_url = publish(REPO, ISSUE, body + "\nCentral ingestion: " +
+                         ("REQUESTED" if token else "BLOCKED_MISSING_CROSS_REPO_TOKEN"))
+    record(public_report_comment_url=public_url, public_report_status="POSTED")
     if token:
-        record(central_report_comment_url=match["html_url"],
-               central_report_status="POSTED")
+        central_url = publish(CENTRAL, 42, body +
+                              "\nCentral ingestion: POSTED_AUTOMATIC", auth=token)
+        record(central_report_comment_url=central_url, central_report_status="POSTED")
     else:
-        record(public_report_comment_url=match["html_url"],
-               public_report_status="POSTED",
-               central_report_status="BLOCKED_MISSING_CROSS_REPO_TOKEN")
+        record(central_report_status="BLOCKED_MISSING_CROSS_REPO_TOKEN")
 
 if __name__ == "__main__":
     try:
