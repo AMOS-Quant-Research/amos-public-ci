@@ -37,6 +37,8 @@ class MeshResolver:
     """Resolves AMOS capabilities while keeping callers vendor-neutral."""
 
     def resolve(self, tenant: TenantConfig, request: MeshRequest) -> Route:
+        if request.tenant_id != tenant.tenant_id:
+            raise ValueError("request tenant_id does not match tenant configuration")
         enabled = {item.name for item in tenant.providers if item.enabled}
         candidates = [name for name in CAPABILITY_MATRIX[request.capability] if name in enabled]
         if not candidates:
