@@ -34,53 +34,50 @@ jobs:
             echo 'OPENCODE_CLI_AVAILABLE=false'
           fi
           echo 'No provider credentials are used in this public test.'
-      - name: OpenCode zero-cost model smoke (public synthetic only)
+      - name: OpenCode generates and validates Issue #5 synthetic code
         shell: bash
         timeout-minutes: 4
         env:
           OPENCODE_DISABLE_AUTOUPDATE: "true"
         run: |
-          rm -f agent_result.py opencode_run.log
-          echo 'Launching public synthetic OpenCode task (no credentials)'
+          rm -f agent_result.py tests/test_agent_generated_constant.py opencode_run.log
+          echo 'Launching public synthetic OpenCode task for Issue #5 (no credentials)'
           set +e
-          timeout --signal=TERM --kill-after=5s 160s opencode run --model opencode/nemotron-3.5-lightning-free --agent build "Only create agent_result.py in the current repository root with exactly ANSWER = 7 and then finish immediately. Do not execute commands." > opencode_run.log 2>&1 &
+          timeout --signal=TERM --kill-after=5s 160s opencode run --model opencode/nemotron-3.5-lightning-free --agent build "Implement public Issue #5. Create exactly two files: agent_result.py containing exactly ANSWER = 7, and tests/test_agent_generated_constant.py containing a unittest that imports ANSWER from agent_result and asserts ANSWER == 7. Do not modify or create any other files. Do not use network. Finish immediately." > opencode_run.log 2>&1 &
           pid=$!
           set -e
-          agent_exit=""
           found=false
-          # Validate generated file without assuming a model CLI can exit promptly.
           for i in $(seq 1 165); do
-            if [ -f agent_result.py ]; then
+            if [ -f agent_result.py ] && [ -f tests/test_agent_generated_constant.py ]; then
               found=true
-              echo "AGENT_FILE_CREATED=true"
+              echo "AGENT_ISSUE_5_FILES_CREATED=true"
               break
             fi
             if ! kill -0 "$pid" 2>/dev/null; then
-              echo "AGENT_PROCESS_ENDED_BEFORE_FILE=true"
+              echo "AGENT_PROCESS_ENDED_BEFORE_FILES=true"
               break
             fi
             sleep 1
           done
-          if [ "$found" = true ]; then
-            python3 -c "from agent_result import ANSWER; assert ANSWER == 7"
-            echo "AGENT_FILE_VALIDATED=true"
+          if [ "$found" != true ]; then
+            echo "ERROR: no complete verified model-generated files" >&2
+            exit 1
           fi
-          # Always stop the bounded worker at the end of this isolated job.
-          if kill -0 "$pid" 2>/dev/null; then
-            kill -TERM "$pid" 2>/dev/null || true
+          unexpected="$(git status --porcelain | sed -E 's/^...//' | grep -v -E '^(agent_result.py|tests/test_agent_generated_constant.py|opencode_run.log)$' || true)"
+          if [ -n "$unexpected" ]; then
+            echo "ERROR: generated unexpected paths:" >&2
+            echo "$unexpected" >&2
+            exit 1
           fi
+          python3 -m unittest discover -s tests -v
+          if kill -0 "$pid" 2>/dev/null; then kill -TERM "$pid" 2>/dev/null || true; fi
           set +e
           wait "$pid"
           agent_exit=$?
           set -e
           echo "AGENT_EXIT_CODE=$agent_exit"
           cat opencode_run.log
-          if [ "$found" != true ]; then
-            echo "ERROR: no verified model-generated file" >&2
-            exit 1
-          fi
-          echo "AGENT_SYNTHETIC_FILE_SUCCESS=true"
-          echo "AGENT_CLEAN_EXIT_UNVERIFIED=true"
+          echo "AGENT_ISSUE_5_TEST_SUCCESS=true"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -88,5 +85,6 @@ jobs:
           path: |
             opencode_run.log
             agent_result.py
+            tests/test_agent_generated_constant.py
           if-no-files-found: warn
           retention-days: 1
