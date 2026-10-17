@@ -5,8 +5,8 @@ on:
       issue_number:
         description: 'Approved NEW public synthetic Issue number (never #7)'
         required: true
-        type: number
-        default: 17
+        type: string
+        default: '17'
 permissions:
   contents: write
   issues: write
