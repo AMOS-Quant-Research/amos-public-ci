@@ -82,24 +82,42 @@ def commit_and_pr():
     record(draft_pr_url=url, completion_state="PARTIAL_AWAITING_CENTRAL_VERIFICATION")
 
 def central_report():
+    """Publish an auditable receipt; never claim central ingestion without it."""
     p = pathlib.Path("amos-loop-evidence.json")
     if not p.exists():
         record()
     d = json.loads(p.read_text())
     token = os.environ.get("AMOS_CENTRAL_REPORT_TOKEN", "")
-    if not token:
-        record(central_report_status="BLOCKED_MISSING_CROSS_REPO_TOKEN")
-        return
-    prior = json.loads(gh("api", f"repos/{CENTRAL}/issues/42/comments?per_page=100", token=token))
-    match = next((x for x in prior if KEY in x.get("body", "")), None)
+    destination = CENTRAL if token else REPO
+    number = 42 if token else ISSUE
+    key = f"AMOS-REPORT-KEY: {KEY}"
+    body = (
+        f"AMOS P0 public synthetic evidence\n{key}\n"
+        f"Run: {d['workflow_run_url']}\n"
+        f"AI model call: {d['model_request_succeeded']}\n"
+        f"Commit: {d['changed_commit_sha']}\n"
+        f"Draft PR: {d['draft_pr_url']}\n"
+        f"Tests exit: {d['test_exit_code']}\n"
+        f"Completion: {d['completion_state']}\n"
+        f"Artifact: {d['workflow_run_url']}#artifacts\n"
+        f"Central ingestion: {'REQUESTED' if token else 'BLOCKED_MISSING_CROSS_REPO_TOKEN'}\n"
+        "This is synthetic evidence, NOT a financial validation or live trade."
+    )
+    # A public same-repo issue comment is a durable fallback. It is NOT
+    # equivalent to a central PR #42 receipt and must never be labeled as such.
+    prior = json.loads(gh("api", f"repos/{destination}/issues/{number}/comments?per_page=100",
+                          token=token if token else None))
+    match = next((x for x in prior if key in x.get("body", "")), None)
     if match is None:
-        body = (f"AMOS P0 public Issue #{ISSUE} evidence\\nIdempotency: {KEY}\\n"
-                f"Run: {d['workflow_run_url']}\\nAI model call: {d['model_request_succeeded']}\\n"
-                f"Commit: {d['changed_commit_sha']}\\nDraft PR: {d['draft_pr_url']}\\n"
-                f"Tests exit: {d['test_exit_code']}\\nStatus: {d['completion_state']}\\n"
-                f"Artifact: {d['workflow_run_url']}#artifacts")
-        match = json.loads(gh("api", f"repos/{CENTRAL}/issues/42/comments", "-f", f"body={body}", token=token))
-    record(central_report_comment_url=match["html_url"], central_report_status="POSTED")
+        match = json.loads(gh("api", f"repos/{destination}/issues/{number}/comments",
+                              "-f", f"body={body}", token=token if token else None))
+    if token:
+        record(central_report_comment_url=match["html_url"],
+               central_report_status="POSTED")
+    else:
+        record(public_report_comment_url=match["html_url"],
+               public_report_status="POSTED",
+               central_report_status="BLOCKED_MISSING_CROSS_REPO_TOKEN")
 
 if __name__ == "__main__":
     try:
