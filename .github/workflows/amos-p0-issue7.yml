@@ -1,0 +1,49 @@
+name: AMOS P0 public synthetic Issue 7
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  synthetic-agent:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - name: Contract tests
+        run: python3 -m unittest discover -s tests -p 'test_issue7_policy.py' -v
+      - name: Install free OpenCode CLI
+        run: npm install --global opencode-ai && opencode --version
+      - name: Run bounded free agent for Issue 7
+        shell: bash
+        env:
+          OPENCODE_DISABLE_AUTOUPDATE: 'true'
+        run: |
+          set -euo pipefail
+          printf 'ANSWER = 7\n' > agent_result.py
+          rm -f tests/test_agent_generated_constant.py
+          timeout --signal=TERM --kill-after=5s 180s opencode run --model opencode/nemotron-3.5-lightning-free --agent build 'Issue #7: Create ONLY tests/test_agent_generated_constant.py. Python unittest: from agent_result import ANSWER; assert ANSWER == 7. Do not modify any other file.' > agent.log 2>&1 &
+          pid=$!
+          found=false
+          for i in $(seq 1 185); do
+            if [[ -s tests/test_agent_generated_constant.py ]]; then found=true; break; fi
+            if ! kill -0 "$pid" 2>/dev/null; then break; fi
+            sleep 1
+          done
+          if kill -0 "$pid" 2>/dev/null; then kill -TERM "$pid" || true; fi
+          wait "$pid" || true
+          if [[ "$found" != true ]]; then
+            echo "::error::AI_FILE_NOT_GENERATED"; cat agent.log; exit 1
+          fi
+          changed="$(git status --porcelain --untracked-files=all | sed -E 's/^...//' | grep -v -E '^(agent_result.py|agent.log|tests/test_agent_generated_constant.py)$' || true)"
+          if [[ -n "$changed" ]]; then echo "::error::OUT_OF_SCOPE_CHANGE"; echo "$changed"; exit 1; fi
+          python3 -m unittest discover -s tests -p 'test_agent_generated_constant.py' -v
+          echo "AI_GENERATED_FILE_ACCEPTED=true"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: issue7-agent-evidence
+          path: |
+            agent.log
+            agent_result.py
+            tests/test_agent_generated_constant.py
+          retention-days: 1
