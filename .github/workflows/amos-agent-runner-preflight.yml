@@ -1,0 +1,31 @@
+name: AMOS public-safe agent runner preflight
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/amos-agent-runner-preflight.yml'
+      - 'tests/test_runner_preflight.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  runner-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Python unit checks
+        run: python3 -m unittest discover -s tests -p 'test_runner_preflight.py' -v
+      - name: Agent CLI availability (diagnostic only)
+        shell: bash
+        run: |
+          if command -v claude >/dev/null 2>&1; then
+            echo 'CLAUDE_CLI_AVAILABLE=true'
+          else
+            echo 'CLAUDE_CLI_AVAILABLE=false'
+          fi
+          if command -v opencode >/dev/null 2>&1; then
+            echo 'OPENCODE_CLI_AVAILABLE=true'
+          else
+            echo 'OPENCODE_CLI_AVAILABLE=false'
+          fi
+          echo 'No provider keys are accessed, no agent invocation occurs.'
