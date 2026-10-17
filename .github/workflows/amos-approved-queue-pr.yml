@@ -1,0 +1,24 @@
+name: AMOS approved queue PR checks
+on:
+  pull_request:
+    paths:
+      - 'scripts/approved_queue.py'
+      - 'scripts/approved_issue_worker.py'
+      - 'tests/test_approved_queue.py'
+      - 'tests/test_approved_issue_report.py'
+      - '.github/workflows/amos-approved-queue.yml'
+      - '.github/workflows/amos-approved-queue-pr.yml'
+permissions:
+  contents: read
+jobs:
+  queue-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Python syntax
+        run: python3 -m py_compile scripts/approved_queue.py scripts/approved_issue_worker.py tests/test_approved_queue.py tests/test_approved_issue_report.py
+      - name: Queue and reporting unit tests
+        run: |
+          python3 -m unittest discover -s tests -p 'test_approved_queue.py' -v
+          python3 -m unittest discover -s tests -p 'test_approved_issue_report.py' -v
