@@ -1,0 +1,25 @@
+name: P0 public-safe loop probe
+on:
+  push:
+    branches:
+      - p0/public-loop-probe-20261017
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run public-only execution probe
+        run: python p0_public_probe.py
+      - name: Check evidence is not falsely verified
+        run: python -c "import json; d=json.load(open('amos-loop-evidence.json')); assert d['loop_status']=='PARTIAL' and d['model_request']=='NOT_RUN'"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: amos-loop-evidence
+          path: amos-loop-evidence.json
