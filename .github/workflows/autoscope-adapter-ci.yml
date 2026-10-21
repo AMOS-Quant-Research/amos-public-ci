@@ -23,3 +23,32 @@ jobs:
           python-version: '3.11'
       - name: Run adapter tests
         run: python -m unittest discover -s integrations/autoscope -p 'test_*.py' -v
+
+  nautilus-real-tick-bt:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    steps:
+      - name: Checkout existing G75 Nautilus research
+        uses: actions/checkout@v4
+        with:
+          repository: Sai310421/xauusd-data
+          ref: c28cb25970d7a72f6a1decc1aadbc358219a6c91
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install NautilusTrader
+        run: python -m pip install 'nautilus_trader==1.230.0' pandas numpy
+      - name: Fetch real Dukascopy XAUUSD Bid Ask and build catalog
+        run: python research/build_raw_bidask_catalog_duka.py --start 2026-10-19 --days 1 --catalog catalog/raw_bidask --symbols XAUUSD --workers 8 --fresh
+      - name: Run existing NautilusTrader G75 strategy on QuoteTicks
+        run: python research/g75_tsugi_mtf_rawtick_v3.py --catalog catalog/raw_bidask --experiment-id amos-real-bt-${{ github.run_id }} --gate G1 --variant B --raw-bidask-only
+      - name: Upload KPI and source manifest
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: amos-nautilus-bt-${{ github.run_id }}
+          path: |
+            results/ae-bt/amos-real-bt-*/cells/*.json
+            catalog/raw_bidask/catalog_manifest.json
+          if-no-files-found: warn
