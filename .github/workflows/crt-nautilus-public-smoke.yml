@@ -40,6 +40,36 @@ jobs:
           PY
       - name: Execute synthetic CRT research logic (no private data)
         run: python -m unittest discover -s tests -p 'test_crt_synthetic.py' -v
+      - name: Execute Nautilus BacktestEngine synthetic QuoteTick BT
+        run: |
+          python - <<'PY'
+          from datetime import datetime, timezone
+          from decimal import Decimal
+          from nautilus_trader.backtest import BacktestEngine
+          from nautilus_trader.config import BacktestEngineConfig
+          from nautilus_trader.model import AccountType, OmsType, BookType, Currency, Price, Quantity, QuoteTick
+          from nautilus_trader.execution import MakerTakerFeeModel
+          from nautilus_trader.testkit.providers import TestInstrumentProvider
+          from nautilus_trader.trading import EmaCross, EmaCrossConfig
+          import json
+          instrument=TestInstrumentProvider.default_fx_ccy("AUD/USD")
+          engine=BacktestEngine(BacktestEngineConfig())
+          engine.add_venue(venue=instrument.id.venue,oms_type=OmsType.HEDGING,account_type=AccountType.MARGIN,starting_balances=["1000000 USD"],base_currency=Currency.from_str("USD"),book_type=BookType.L1_MBP,fee_model=MakerTakerFeeModel(maker_rate=Decimal("0"),taker_rate=Decimal("0")))
+          engine.add_instrument(instrument)
+          engine.add_strategy(EmaCross(EmaCrossConfig(instrument_id=instrument.id,trade_size=Quantity.from_int(100000),fast_period=3,slow_period=7)))
+          ticks=[]
+          base=1_800_000_000_000_000_000
+          for i in range(300):
+              mid=Decimal("0.70")+Decimal(i%40-20)/Decimal("10000")
+              ticks.append(QuoteTick(instrument_id=instrument.id,bid_price=Price.from_str(str(mid)),ask_price=Price.from_str(str(mid+Decimal("0.0002"))),bid_size=Quantity.from_int(1000000),ask_size=Quantity.from_int(1000000),ts_event=base+i*1000000000,ts_init=base+i*1000000000))
+          engine.add_data(ticks)
+          engine.run()
+          result=engine.get_result()
+          report={"kind":"nautilus_synthetic_bt","real_raw_tick":False,"strategy":"EmaCross","ticks":len(ticks),"total_orders":result.total_orders,"total_positions":result.total_positions,"stats_pnls":str(result.stats_pnls),"stats_returns":str(result.stats_returns)}
+          print(json.dumps(report,indent=2))
+          with open("synthetic-bt.json","w") as out:json.dump(report,out,indent=2)
+          assert result.total_orders>0,"BT produced no orders"
+          PY
       - name: Write public verification report
         if: always()
         run: |
@@ -51,3 +81,4 @@ jobs:
           path: |
             crt-public-smoke.json
             crt-api-report.json
+            synthetic-bt.json
