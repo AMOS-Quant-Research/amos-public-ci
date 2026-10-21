@@ -2,6 +2,7 @@ name: CRT Nautilus public runner smoke
 on:
   workflow_dispatch:
   push:
+    branches: [main]
     paths:
       - '.github/workflows/crt-nautilus-public-smoke.yml'
 permissions:
@@ -31,6 +32,9 @@ jobs:
           print("BacktestEngineConfig fields:", list(getattr(BacktestEngineConfig, "__struct_fields__", [])))
           print("QuoteTick:", QuoteTick)
           assert BacktestNode and QuoteTick
+          import json
+          with open('crt-api-report.json','w') as f:
+              json.dump({'version':getattr(nautilus_trader,'__version__','unknown'), 'backtest_node_strategy_methods':[n for n in dir(BacktestNode) if 'strategy' in n.lower()], 'run_config_fields':list(getattr(BacktestRunConfig,'__struct_fields__',[])), 'engine_config_fields':list(getattr(BacktestEngineConfig,'__struct_fields__',[])), 'real_raw_tick':False, 'kpi':None},f,indent=2)
           PY
       - name: Write public verification report
         if: always()
@@ -40,4 +44,6 @@ jobs:
         if: always()
         with:
           name: crt-nautilus-public-api-smoke
-          path: crt-public-smoke.json
+          path: |
+            crt-public-smoke.json
+            crt-api-report.json
