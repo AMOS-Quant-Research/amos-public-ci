@@ -23,6 +23,7 @@ jobs:
           python - <<'PY'
           import inspect
           import nautilus_trader
+          # WR1-WR5 are frozen and intentionally excluded from this workflow.
           from nautilus_trader.backtest import BacktestNode
           from nautilus_trader.config import BacktestRunConfig, BacktestEngineConfig
           from nautilus_trader.model import QuoteTick
