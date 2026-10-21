@@ -25,7 +25,6 @@ jobs:
         run: python -m unittest discover -s integrations/autoscope -p 'test_*.py' -v
 
   nautilus-real-tick-bt:
-    if: github.event_name == 'push'
     runs-on: ubuntu-24.04
     timeout-minutes: 55
     steps:
