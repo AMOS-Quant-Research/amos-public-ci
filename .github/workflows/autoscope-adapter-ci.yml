@@ -22,5 +22,4 @@ jobs:
         with:
           python-version: '3.11'
       - name: Run adapter tests
-        working-directory: integrations/autoscope
-        run: python -m unittest discover -p 'test_*.py' -v
+        run: python -m unittest discover -s integrations/autoscope -p 'test_*.py' -v
