@@ -16,4 +16,4 @@ jobs:
       - name: Compile
         run: python -m py_compile chart-vision/app.py
       - name: Unit tests
-        run: cd chart-vision && python -m unittest -v test_app.py
+        run: cd chart-vision && python -m unittest -v test_app.py test_integration.py
