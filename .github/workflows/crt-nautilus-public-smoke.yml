@@ -38,6 +38,8 @@ jobs:
           with open('crt-api-report.json','w') as f:
               json.dump({'version':getattr(nautilus_trader,'__version__','unknown'), 'backtest_node_strategy_methods':[n for n in dir(BacktestNode) if 'strategy' in n.lower()], 'add_strategy_signature':str(inspect.signature(BacktestNode.add_strategy)) if hasattr(BacktestNode,'add_strategy') else None, 'run_config_fields':list(getattr(BacktestRunConfig,'__struct_fields__',[])), 'engine_config_fields':list(getattr(BacktestEngineConfig,'__struct_fields__',[])), 'real_raw_tick':False, 'kpi':None},f,indent=2)
           PY
+      - name: Execute synthetic CRT research logic (no private data)
+        run: python -m unittest discover -s tests -p 'test_crt_synthetic.py' -v
       - name: Write public verification report
         if: always()
         run: |
