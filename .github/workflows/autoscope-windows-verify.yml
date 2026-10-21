@@ -48,6 +48,30 @@ jobs:
           $projects = @(Get-ChildItem -Path autoscope-src -Recurse -Filter '*.csproj')
           $projects | ForEach-Object { Write-Host $_.FullName }
           if ($projects.Count -eq 0) { throw 'No csproj files found' }
+      - name: Build native dependencies and application
+        shell: pwsh
+        run: |
+          $script = Get-ChildItem autoscope-src -Recurse -Filter 'build.ps1' | Where-Object { $_.FullName -match '[\\/]scripts[\\/]build.ps1
+        shell: pwsh
+        run: |
+          $project = Get-ChildItem autoscope-src -Recurse -Filter 'Tests.csproj' | Select-Object -First 1
+          if (-not $project) { throw 'Tests.csproj missing' }
+          dotnet run --project $project.FullName -c Release -- all
+          if ($LASTEXITCODE -ne 0) { throw "Core test suite failed" }
+      - name: Run AutoBacktest test suite
+        shell: pwsh
+        run: |
+          $project = Get-ChildItem autoscope-src -Recurse -Filter 'AutoBacktest.Tests.csproj' | Select-Object -First 1
+          if (-not $project) { throw 'AutoBacktest.Tests.csproj missing' }
+          dotnet run --project $project.FullName -c Release
+          if ($LASTEXITCODE -ne 0) { throw "AutoBacktest tests failed" }
+ } | Select-Object -First 1
+          if (-not $script) { throw 'Upstream scripts/build.ps1 missing' }
+          Push-Location $script.Directory.Parent.FullName
+          try {
+            & $script.FullName
+            if ($LASTEXITCODE -ne 0) { throw 'Upstream native/app build failed' }
+          } finally { Pop-Location }
       - name: Run Core test suite
         shell: pwsh
         run: |
