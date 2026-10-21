@@ -1,0 +1,62 @@
+name: AutoScope Nautilus Real Tick Smoke BT
+on:
+  push:
+    branches: [integration/autoscope-101]
+    paths:
+      - '.github/workflows/autoscope-nautilus-real-bt.yml'
+      - 'integrations/autoscope/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  raw-tick-bt:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install NautilusTrader
+        run: python -m pip install nautilus_trader
+      - name: Download actual Dukascopy XAUUSD tick quotes
+        shell: bash
+        run: |
+          python - <<'PY'
+          import datetime as dt, lzma, struct, urllib.request, csv, pathlib
+          today=dt.datetime.now(dt.timezone.utc).date()
+          dates=[today-dt.timedelta(days=i) for i in range(1,9) if (today-dt.timedelta(days=i)).weekday()<5]
+          fmt=struct.Struct('>3I2f')
+          path=pathlib.Path('raw_xauusd.csv')
+          count=0
+          with path.open('w',newline='') as f:
+              w=csv.writer(f);w.writerow(['time','bid','ask','bid_size','ask_size'])
+              for day in dates:
+                  for hour in range(24):
+                      url=f'https://datafeed.dukascopy.com/datafeed/XAUUSD/{day.year}/{day.month-1:02d}/{day.day:02d}/{hour:02d}h_ticks.bi5'
+                      try:
+                          req=urllib.request.Request(url,headers={'User-Agent':'AMOS-raw-tick-bt/1'})
+                          with urllib.request.urlopen(req,timeout=8) as response: raw=lzma.decompress(response.read())
+                      except Exception as exc:
+                          print('missing hour',day,hour,str(exc)[:100]);continue
+                      origin=dt.datetime(day.year,day.month,day.day,hour,tzinfo=dt.timezone.utc)
+                      for offset in range(0,len(raw)-fmt.size+1,fmt.size):
+                          ms,ask,bid,askv,bidv=fmt.unpack_from(raw,offset)
+                          if bid<=0 or ask<=0 or ask<bid:continue
+                          t=origin+dt.timedelta(milliseconds=ms)
+                          w.writerow([t.isoformat(),f'{bid/1000:.3f}',f'{ask/1000:.3f}',bidv,askv])
+                          count+=1
+                      if count>=5000:break
+                  if count>=5000:break
+          print('Downloaded actual quote ticks:',count)
+          if count<100:raise SystemExit('Not enough real ticks')
+          PY
+      - name: Run Nautilus tick engine smoke
+        run: python integrations/autoscope/nautilus_tick_smoke.py raw_xauusd.csv bt_result.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: autoscope-nautilus-real-tick-smoke
+          path: |
+            bt_result.json
+          if-no-files-found: ignore
