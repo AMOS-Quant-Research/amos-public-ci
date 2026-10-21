@@ -14,6 +14,6 @@ jobs:
         with:
           python-version: '3.11'
       - name: Compile
-        run: python -m py_compile chart-vision/app.py
+        run: python -m py_compile chart-vision/app.py chart-vision/consensus.py
       - name: Unit tests
-        run: cd chart-vision && python -m unittest -v test_app.py test_integration.py
+        run: cd chart-vision && python -m unittest -v test_app.py test_integration.py test_consensus.py
