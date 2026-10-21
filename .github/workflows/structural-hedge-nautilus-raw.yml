@@ -1,0 +1,35 @@
+name: structural-hedge-nautilus-raw
+on:
+  workflow_dispatch:
+  push:
+    branches: [research/structural-hedge-nautilus-35]
+    paths:
+      - "research/structural_hedge/**"
+      - ".github/workflows/structural-hedge-nautilus-raw.yml"
+jobs:
+  raw-quote-bt:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+      - name: Checkout existing Dukascopy raw producer
+        uses: actions/checkout@v4
+        with:
+          repository: Sai310421/xauusd-duka-feed
+          path: feed
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install NautilusTrader
+        run: python -m pip install --upgrade nautilus_trader
+      - name: Download real raw bid ask quotes
+        run: python feed/scripts/duka_raw90.py --days 7 --root "$RUNNER_TEMP/raw" --symbols XAUUSD --workers 6
+      - name: Nautilus real QuoteTick replay
+        run: python research/structural_hedge/nautilus_raw_runner.py --raw-root "$RUNNER_TEMP/raw/XAUUSD" --days 7 --out structural_hedge_kpi.json
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: structural-hedge-nautilus-raw-evidence
+          path: structural_hedge_kpi.json
+          if-no-files-found: warn
