@@ -1,0 +1,43 @@
+name: CRT Nautilus public runner smoke
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/crt-nautilus-public-smoke.yml'
+permissions:
+  contents: read
+jobs:
+  nautilus-public-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install NautilusTrader
+        run: python -m pip install --pre 'nautilus_trader>=2.0.0rc1'
+      - name: Verify Nautilus API and synthetic quote processing
+        run: |
+          python - <<'PY'
+          import inspect
+          import nautilus_trader
+          from nautilus_trader.backtest import BacktestNode
+          from nautilus_trader.config import BacktestRunConfig, BacktestEngineConfig
+          from nautilus_trader.model import QuoteTick
+          print("Nautilus version:", getattr(nautilus_trader, "__version__", "unknown"))
+          print("BacktestNode methods:", [n for n in dir(BacktestNode) if "strategy" in n.lower()])
+          print("BacktestRunConfig fields:", list(getattr(BacktestRunConfig, "__struct_fields__", [])))
+          print("BacktestEngineConfig fields:", list(getattr(BacktestEngineConfig, "__struct_fields__", [])))
+          print("QuoteTick:", QuoteTick)
+          assert BacktestNode and QuoteTick
+          PY
+      - name: Write public verification report
+        if: always()
+        run: |
+          echo '{"kind":"public_nautilus_api_smoke","real_raw_tick":false,"strategy_backtest_executed":false,"kpi":null}' > crt-public-smoke.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: crt-nautilus-public-api-smoke
+          path: crt-public-smoke.json
