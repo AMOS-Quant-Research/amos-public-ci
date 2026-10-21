@@ -28,13 +28,15 @@ jobs:
           from nautilus_trader.model import QuoteTick
           print("Nautilus version:", getattr(nautilus_trader, "__version__", "unknown"))
           print("BacktestNode methods:", [n for n in dir(BacktestNode) if "strategy" in n.lower()])
+          print("BacktestNode.add_strategy signature:", inspect.signature(BacktestNode.add_strategy) if hasattr(BacktestNode,'add_strategy') else 'NOT_PRESENT')
+          print("BacktestNode.add_builtin_strategy signature:", inspect.signature(BacktestNode.add_builtin_strategy) if hasattr(BacktestNode,'add_builtin_strategy') else 'NOT_PRESENT')
           print("BacktestRunConfig fields:", list(getattr(BacktestRunConfig, "__struct_fields__", [])))
           print("BacktestEngineConfig fields:", list(getattr(BacktestEngineConfig, "__struct_fields__", [])))
           print("QuoteTick:", QuoteTick)
           assert BacktestNode and QuoteTick
           import json
           with open('crt-api-report.json','w') as f:
-              json.dump({'version':getattr(nautilus_trader,'__version__','unknown'), 'backtest_node_strategy_methods':[n for n in dir(BacktestNode) if 'strategy' in n.lower()], 'run_config_fields':list(getattr(BacktestRunConfig,'__struct_fields__',[])), 'engine_config_fields':list(getattr(BacktestEngineConfig,'__struct_fields__',[])), 'real_raw_tick':False, 'kpi':None},f,indent=2)
+              json.dump({'version':getattr(nautilus_trader,'__version__','unknown'), 'backtest_node_strategy_methods':[n for n in dir(BacktestNode) if 'strategy' in n.lower()], 'add_strategy_signature':str(inspect.signature(BacktestNode.add_strategy)) if hasattr(BacktestNode,'add_strategy') else None, 'run_config_fields':list(getattr(BacktestRunConfig,'__struct_fields__',[])), 'engine_config_fields':list(getattr(BacktestEngineConfig,'__struct_fields__',[])), 'real_raw_tick':False, 'kpi':None},f,indent=2)
           PY
       - name: Write public verification report
         if: always()
