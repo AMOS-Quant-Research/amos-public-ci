@@ -48,16 +48,16 @@ jobs:
           from decimal import Decimal
           from nautilus_trader.backtest import BacktestEngine
           from nautilus_trader.config import BacktestEngineConfig
-          from nautilus_trader.model import AccountType, OmsType, BookType, Currency, Price, Quantity, QuoteTick
-          from nautilus_trader.execution import MakerTakerFeeModel
+          from nautilus_trader.model import AccountType, OmsType, BookType, Currency, Price, Quantity, QuoteTick, Money
+          from nautilus_trader.backtest.models import MakerTakerFeeModel
           from nautilus_trader.testkit.providers import TestInstrumentProvider
-          from nautilus_trader.trading import EmaCross, EmaCrossConfig
+          from nautilus_trader.examples.strategies.ema_cross import EMACross, EMACrossConfig
           import json
           instrument=TestInstrumentProvider.default_fx_ccy("AUD/USD")
           engine=BacktestEngine(BacktestEngineConfig())
-          engine.add_venue(venue=instrument.id.venue,oms_type=OmsType.HEDGING,account_type=AccountType.MARGIN,starting_balances=["1000000 USD"],base_currency=Currency.from_str("USD"),book_type=BookType.L1_MBP,fee_model=MakerTakerFeeModel(maker_rate=Decimal("0"),taker_rate=Decimal("0")))
+          engine.add_venue(venue=instrument.id.venue,oms_type=OmsType.HEDGING,account_type=AccountType.MARGIN,starting_balances=[Money.from_str("1000000 USD")],base_currency=Currency.from_str("USD"),book_type=BookType.L1_MBP,fee_model=MakerTakerFeeModel(maker_rate=Decimal("0"),taker_rate=Decimal("0")))
           engine.add_instrument(instrument)
-          engine.add_strategy(EmaCross(EmaCrossConfig(instrument_id=instrument.id,trade_size=Quantity.from_int(100000),fast_period=3,slow_period=7)))
+          engine.add_strategy(EMACross(EMACrossConfig(instrument_id=instrument.id,trade_size=Quantity.from_int(100000),fast_period=3,slow_period=7)))
           ticks=[]
           base=1_800_000_000_000_000_000
           for i in range(300):
@@ -66,7 +66,7 @@ jobs:
           engine.add_data(ticks)
           engine.run()
           result=engine.get_result()
-          report={"kind":"nautilus_synthetic_bt","real_raw_tick":False,"strategy":"EmaCross","ticks":len(ticks),"total_orders":result.total_orders,"total_positions":result.total_positions,"stats_pnls":str(result.stats_pnls),"stats_returns":str(result.stats_returns)}
+          report={"kind":"nautilus_synthetic_bt","real_raw_tick":False,"strategy":"EMACross","ticks":len(ticks),"total_orders":result.total_orders,"total_positions":result.total_positions,"stats_pnls":str(result.stats_pnls),"stats_returns":str(result.stats_returns)}
           print(json.dumps(report,indent=2))
           with open("synthetic-bt.json","w") as out:json.dump(report,out,indent=2)
           assert result.total_orders>0,"BT produced no orders"
@@ -74,7 +74,12 @@ jobs:
       - name: Write public verification report
         if: always()
         run: |
-          echo '{"kind":"public_nautilus_api_smoke","real_raw_tick":false,"strategy_backtest_executed":false,"kpi":null}' > crt-public-smoke.json
+          python - <<'PY'
+          import json,pathlib
+          bt=pathlib.Path("synthetic-bt.json")
+          payload={"kind":"public_nautilus_smoke","real_raw_tick":False,"synthetic_bt_executed":bt.exists(),"crt_snr_real_bt_executed":False,"kpi":None}
+          pathlib.Path("crt-public-smoke.json").write_text(json.dumps(payload,indent=2))
+          PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
