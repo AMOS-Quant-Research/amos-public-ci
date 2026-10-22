@@ -1,0 +1,19 @@
+name: NVIDIA NIM Connectivity
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - scripts/nim_connectivity.py
+      - .github/workflows/nim-connectivity.yml
+permissions:
+  contents: read
+jobs:
+  verify-nim:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check NVIDIA inference
+        env:
+          NVIDIA_NIM_API_KEY: ${{ secrets.NVIDIA_NIM_API_KEY }}
+        run: python3 scripts/nim_connectivity.py
