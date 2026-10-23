@@ -1,0 +1,60 @@
+name: AutoScope Source Build
+on:
+  push:
+    branches: [integration/autoscope-101]
+    paths:
+      - 'AutoScope-1.01-source.zip'
+      - '.github/workflows/autoscope-source-build.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check ZIP integrity and inventory
+        shell: bash
+        run: |
+          python - <<'PY'
+          import zipfile
+          path='AutoScope-1.01-source.zip'
+          with zipfile.ZipFile(path) as z:
+              bad=z.testzip()
+              if bad: raise SystemExit(f'Corrupt ZIP member: {bad}')
+              names=z.namelist()
+              print(f'Valid ZIP: {len(names)} entries')
+              for name in names[:30]: print(name)
+          PY
+  build-windows:
+    needs: inspect-source
+    runs-on: windows-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract source safely
+        shell: pwsh
+        run: |
+          $archive = (Resolve-Path 'AutoScope-1.01-source.zip').Path
+          New-Item -ItemType Directory -Force -Path 'autoscope-src' | Out-Null
+          Expand-Archive -LiteralPath $archive -DestinationPath 'autoscope-src' -Force
+          Get-ChildItem -Path autoscope-src -Name | Select-Object -First 30
+      - name: Discover .NET projects
+        shell: pwsh
+        run: |
+          Get-ChildItem autoscope-src -Recurse -Filter '*.csproj' | ForEach-Object { Write-Host $_.FullName }
+          if (-not (Get-ChildItem autoscope-src -Recurse -Filter '*.csproj')) { throw 'No C# project files found' }
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Run upstream test projects
+        shell: pwsh
+        run: |
+          $tests = Get-ChildItem autoscope-src -Recurse -Filter '*.csproj' | Where-Object { $_.FullName -match '[\\/](Tests|AutoBacktest.Tests)[\\/]' }
+          if (-not $tests) { throw 'Expected upstream test projects not found' }
+          foreach ($test in $tests) {
+            Write-Host "Testing $($test.FullName)"
+            dotnet run --project $test.FullName -c Release -- all
+            if ($LASTEXITCODE -ne 0) { throw "Tests failed: $($test.FullName)" }
+          }

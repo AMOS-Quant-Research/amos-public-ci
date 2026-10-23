@@ -1,0 +1,69 @@
+name: AutoScope Windows Verification
+on:
+  push:
+    branches: [integration/autoscope-101]
+    paths:
+      - 'AutoScope-1.01-source.zip'
+      - '.github/workflows/autoscope-windows-verify.yml'
+  pull_request:
+    paths:
+      - 'AutoScope-1.01-source.zip'
+      - '.github/workflows/autoscope-windows-verify.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows-verify:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify and unpack ZIP
+        shell: pwsh
+        run: |
+          @'
+          import zipfile
+          from pathlib import Path
+          p = Path("AutoScope-1.01-source.zip")
+          if not p.is_file(): raise SystemExit("Missing source ZIP")
+          root = Path("autoscope-src").resolve()
+          with zipfile.ZipFile(p) as z:
+              bad = z.testzip()
+              if bad: raise SystemExit(f"Corrupt member: {bad}")
+              for entry in z.infolist():
+                  if not (root / entry.filename).resolve().is_relative_to(root):
+                      raise SystemExit(f"Unsafe member: {entry.filename}")
+              print(f"Verified {len(z.namelist())} entries")
+              z.extractall(root)
+          '@ | python -
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build native dependencies and application
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $script = Get-ChildItem autoscope-src -Recurse -Filter 'build.ps1' |
+            Where-Object { $_.FullName -match '[\\/]scripts[\\/]build.ps1$' } |
+            Select-Object -First 1
+          if (-not $script) { throw 'Upstream scripts/build.ps1 missing' }
+          Push-Location $script.Directory.Parent.FullName
+          try {
+            & $script.FullName
+            if ($LASTEXITCODE -ne 0) { throw 'Upstream build failed' }
+          } finally { Pop-Location }
+      - name: Core tests
+        shell: pwsh
+        run: |
+          $project = Get-ChildItem autoscope-src -Recurse -Filter 'Tests.csproj' |
+            Where-Object { $_.Name -eq 'Tests.csproj' } | Select-Object -First 1
+          if (-not $project) { throw 'Tests.csproj missing' }
+          dotnet run --project $project.FullName -c Release -- all
+          if ($LASTEXITCODE -ne 0) { throw 'Core tests failed' }
+      - name: AutoBacktest tests
+        shell: pwsh
+        run: |
+          $project = Get-ChildItem autoscope-src -Recurse -Filter 'AutoBacktest.Tests.csproj' | Select-Object -First 1
+          if (-not $project) { throw 'AutoBacktest.Tests.csproj missing' }
+          dotnet run --project $project.FullName -c Release
+          if ($LASTEXITCODE -ne 0) { throw 'AutoBacktest tests failed' }

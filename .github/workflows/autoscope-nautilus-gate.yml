@@ -1,0 +1,39 @@
+name: AutoScope Nautilus Raw Tick Gate
+on:
+  push:
+    branches: [integration/autoscope-101]
+    paths:
+      - 'integrations/autoscope/**'
+      - '.github/workflows/autoscope-nautilus-gate.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  nautilus-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install NautilusTrader
+        run: python -m pip install --disable-pip-version-check 'nautilus_trader'
+      - name: Verify installed NautilusTrader runtime
+        run: |
+          python - <<'PY'
+          import importlib.metadata
+          from nautilus_trader.backtest.engine import BacktestEngine
+          print("NautilusTrader", importlib.metadata.version("nautilus_trader"))
+          print("BacktestEngine available:", BacktestEngine.__name__)
+          PY
+      - name: Verify trade-history bridge contract
+        run: python -m unittest discover -s integrations/autoscope -p 'test_*.py' -v
+      - name: Require authorized raw tick data before backtest
+        shell: bash
+        run: |
+          if [ -z "${{ vars.AMOS_RAW_TICK_PATH }}" ]; then
+            echo 'Raw tick data not configured. Runtime and adapter tests only; no backtest executed.'
+            exit 0
+          fi
+          echo 'Raw tick path configured; data location must be available on this runner and validated separately.'
