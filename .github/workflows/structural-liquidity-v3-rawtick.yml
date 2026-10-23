@@ -1,0 +1,35 @@
+name: structural-liquidity-v3-rawtick
+on:
+  push:
+    branches: [research/double-liquidity-sweep-rawtick]
+    paths:
+      - "research/structural_liquidity_v3/**"
+      - ".github/workflows/structural-liquidity-v3-rawtick.yml"
+  pull_request:
+    paths:
+      - "research/structural_liquidity_v3/**"
+      - ".github/workflows/structural-liquidity-v3-rawtick.yml"
+  workflow_dispatch:
+jobs:
+  nautilus-v3:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install NautilusTrader
+        run: pip install nautilus_trader==1.230.0
+      - name: Download real Dukascopy quote ticks
+        run: |
+          python research/structural_liquidity_v3/duka_one_day.py --date 2026-10-19 --out /tmp/xau_ticks.csv
+      - name: Run v3 structural liquidity and hedge pilot
+        run: |
+          mkdir -p results/structural_liquidity_v3
+          python research/structural_liquidity_v3/runner.py --csv /tmp/xau_ticks.csv --out results/structural_liquidity_v3/kpi.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: structural-liquidity-v3-kpi
+          path: results/structural_liquidity_v3/
