@@ -28,3 +28,5 @@ jobs:
         env:
           NVIDIA_NIM_API_KEY: ${{ secrets.NVIDIA_NIM_API_KEY }}
         run: python3 scripts/nim_connectivity.py
+
+# PR checks never receive the NVIDIA API credential.
