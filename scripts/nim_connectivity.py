@@ -10,7 +10,7 @@ def main():
     if not key:
         print("NIM_SECRET_MISSING")
         return 2
-    payload = json.dumps({"model": os.getenv("NIM_MODEL", "nvidia/nemotron-3-super-120b-a12b"), "messages": [{"role": "user", "content": "Reply exactly AMOS_NIM_OK"}], "temperature": 0, "max_tokens": 32}).encode()
+    payload = json.dumps({"model": os.getenv("NIM_MODEL", "meta/llama-3.1-8b-instruct"), "messages": [{"role": "user", "content": "Reply exactly AMOS_NIM_OK"}], "temperature": 0, "max_tokens": 32}).encode()
     req = urllib.request.Request("https://integrate.api.nvidia.com/v1/chat/completions", data=payload, headers={"Authorization": "Bearer " + key, "Content-Type": "application/json"}, method="POST")
     try:
         with urllib.request.urlopen(req, timeout=45) as response:
