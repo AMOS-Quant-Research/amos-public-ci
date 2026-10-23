@@ -1,5 +1,10 @@
 name: AMOS ABC Nautilus Real Raw Tick BT
 on:
+  push:
+    branches:
+      - research/a01-b01-c01-nautilus-preflight-20261023
+    paths:
+      - '.github/workflows/amos-abc-nautilus-rawtick.yml'
   pull_request:
     paths:
       - '.github/workflows/amos-abc-nautilus-rawtick.yml'
