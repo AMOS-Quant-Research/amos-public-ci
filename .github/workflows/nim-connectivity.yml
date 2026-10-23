@@ -1,0 +1,37 @@
+name: NVIDIA NIM Connectivity
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - scripts/nim_connectivity.py
+      - .github/workflows/nim-connectivity.yml
+  pull_request:
+    paths:
+      - scripts/nim_connectivity.py
+      - .github/workflows/nim-connectivity.yml
+permissions:
+  contents: read
+jobs:
+  pr-validation:
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate probe syntax without secrets
+        run: python3 -m py_compile scripts/nim_connectivity.py
+      - name: Explain deferred live test
+        run: echo 'NIM_LIVE_TEST_DEFERRED: PR validation does not access credentials'
+  verify-nim:
+    if: (github.event_name == 'workflow_dispatch' || github.event_name == 'push') && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check NVIDIA inference
+        env:
+          NVIDIA_NIM_API_KEY: ${{ secrets.NVIDIA_NIM_API_KEY }}
+        run: python3 scripts/nim_connectivity.py
+
+# PR checks never receive the NVIDIA API credential.
