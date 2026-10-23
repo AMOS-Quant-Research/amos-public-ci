@@ -1,6 +1,11 @@
 name: NVIDIA NIM Connectivity
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - scripts/nim_connectivity.py
+      - .github/workflows/nim-connectivity.yml
   pull_request:
     paths:
       - scripts/nim_connectivity.py
@@ -9,7 +14,7 @@ permissions:
   contents: read
 jobs:
   pr-validation:
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -19,7 +24,7 @@ jobs:
       - name: Explain deferred live test
         run: echo 'NIM_LIVE_TEST_DEFERRED: PR validation does not access credentials'
   verify-nim:
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    if: (github.event_name == 'workflow_dispatch' || github.event_name == 'push') && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
