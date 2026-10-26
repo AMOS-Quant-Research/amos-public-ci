@@ -6,8 +6,13 @@ Fields without an execution artifact are `NOT_VERIFIED`.
 ```
 REPOSITORY: AMOS-Quant-Research/amos-public-ci
 BRANCH: research/rage-dual-compound-hedge-20261026
-COMMIT_SHA: 8d110a88f2d6014be3b60f6f38cf325ed0129d5a
+COMMIT_SHA: d0ecbabb6448bce0f85f58c2c83a993f6ca5d052
 LAB_DIRECTORY: research/rage-dual-compound-hedge/
+WRITE_PATH: fork Sai310421/amos-public-ci branch research/rage-dual-compound-hedge-20261026
+FORK_PR: https://github.com/Sai310421/amos-public-ci/pull/1
+UPSTREAM_PR: NOT_CREATED (POST /repos/AMOS-Quant-Research/amos-public-ci/pulls returned 403 Resource not accessible by integration)
+ORG_PUSH: 403 same integration limit. Direct write to the organization repository was refused. Existing files were not overwritten.
+COMPARE: https://github.com/AMOS-Quant-Research/amos-public-ci/compare/main...Sai310421:amos-public-ci:research/rage-dual-compound-hedge-20261026?expand=1
 CI_RUNNER: ubuntu-latest (GitHub-hosted public runner)
 RUNNER_STATUS: PARTIAL
   - Scheduled synthetic queue succeeded: run 40338401862 (2026-10-26T14:18:18Z, 10s)
