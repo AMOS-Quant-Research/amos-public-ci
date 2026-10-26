@@ -1,2 +1,5 @@
 *.agdai
 **/MAlonzo/**
+__pycache__/
+*.pyc
+
