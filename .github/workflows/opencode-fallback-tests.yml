@@ -1,0 +1,26 @@
+name: OpenCode Fallback Diagnostics
+
+on:
+  pull_request:
+    paths:
+      - scripts/classify_opencode_error.py
+      - tests/test_classify_opencode_error.py
+      - .github/workflows/opencode-fallback-tests.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Python syntax
+        run: python3 -m py_compile scripts/classify_opencode_error.py tests/test_classify_opencode_error.py
+      - name: Run offline unit tests
+        run: python3 -m unittest discover -s tests -p 'test_classify_opencode_error.py' -v
+      - name: Verify example classification
+        run: |
+          python3 scripts/classify_opencode_error.py --message 'GET http://desktop-eoslnkl:8435/session/status → 403 forbidden' | python3 -c 'import json,sys; r=json.load(sys.stdin); assert r["category"]=="access_denied" and r["http_status"]=="403" and r["root_cause_verified"] is False'
