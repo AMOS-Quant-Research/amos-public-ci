@@ -1,0 +1,31 @@
+name: RAGE DCH unit
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'research/rage-dual-compound-hedge/**'
+      - '.github/workflows/rage-dch-unit.yml'
+  push:
+    paths:
+      - 'research/rage-dual-compound-hedge/**'
+      - '.github/workflows/rage-dch-unit.yml'
+permissions:
+  contents: read
+concurrency:
+  group: rage-dch-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Unit tests only (no market data, no Nautilus, no live orders)
+        working-directory: research/rage-dual-compound-hedge
+        run: PYTHONPATH=src:. python -m unittest discover -s tests -v
+      - name: Structural report (hypothesis stays blocked)
+        working-directory: research/rage-dual-compound-hedge
+        run: PYTHONPATH=src:. python scripts/build_report.py
