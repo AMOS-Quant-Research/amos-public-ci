@@ -36,4 +36,6 @@ python scripts/run_backtest.py
 
 `run_backtest.py` exits 2 until a real catalog is passed, and even then it does not invent native fills.
 
+Multiple books are separate cells. `PYTHONPATH=src:. python scripts/dispatch_matrix.py` prints the plan. The public matrix is capped at 3 shards and is dispatch-only. Raw cells stay `BLOCKED_NO_CATALOG`. The workflow source is `ci/rage-nautilus-matrix.yml`; GitHub only runs the copy at the repository root `.github/workflows/`.
+
 GitHub Actions workflow that only runs the unit tests belongs at the repository root `.github/workflows/rage-dch-unit.yml`, because a workflow nested in this directory does not run.

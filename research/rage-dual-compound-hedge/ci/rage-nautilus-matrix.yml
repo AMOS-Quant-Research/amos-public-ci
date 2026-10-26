@@ -1,0 +1,85 @@
+# Copy to the repository root .github/workflows/ before this file can run.
+# A workflow left inside this package is ignored by GitHub Actions.
+name: RAGE Nautilus matrix
+on:
+  workflow_dispatch:
+    inputs:
+      groups:
+        description: Public shards, max 3
+        default: "3"
+        required: false
+permissions:
+  contents: read
+concurrency:
+  group: rage-nautilus-matrix-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      shard_ids: ${{ steps.cells.outputs.shard_ids }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - id: cells
+        working-directory: research/rage-dual-compound-hedge
+        run: |
+          GROUPS="${{ inputs.groups }}"
+          PYTHONPATH=src:. python scripts/dispatch_matrix.py --groups "$GROUPS" > matrix-plan.json
+          python - <<'PY'
+          import json, os, pathlib
+          plan = json.loads(pathlib.Path("matrix-plan.json").read_text())
+          assert plan["hypothesis"] == "BLOCKED"
+          assert plan["market_kpi"] is None
+          assert all(cell["nautilus_native_fills"] == 0 for cell in plan["cells"])
+          ids = list(range(len(plan["shards"])))
+          path = os.environ["GITHUB_OUTPUT"]
+          with open(path, "a", encoding="utf-8") as handle:
+              handle.write("shard_ids=" + json.dumps(ids) + "\n")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rage-matrix-plan
+          path: research/rage-dual-compound-hedge/matrix-plan.json
+  shard:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        shard: ${{ fromJson(needs.plan.outputs.shard_ids) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run this shard only
+        working-directory: research/rage-dual-compound-hedge
+        env:
+          SHARD: ${{ matrix.shard }}
+        run: |
+          PYTHONPATH=src:. python scripts/dispatch_matrix.py --groups "${{ inputs.groups }}" > matrix-plan.json
+          python - <<'PY'
+          import json, os, pathlib
+          plan = json.loads(pathlib.Path("matrix-plan.json").read_text())
+          shard = plan["shards"][int(os.environ["SHARD"])]
+          rows = [cell for cell in plan["cells"] if cell["cell_id"] in shard]
+          out = {
+              "shard": int(os.environ["SHARD"]),
+              "live_trading": False,
+              "hypothesis": "BLOCKED",
+              "nautilus_installed": False,
+              "note": "Planner only. rc6 fee model lives at nautilus_trader.execution.MakerTakerFeeModel. This shard does not fill orders.",
+              "cells": rows,
+          }
+          pathlib.Path(f"shard-{os.environ['SHARD']}.json").write_text(json.dumps(out, indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rage-matrix-shard-${{ matrix.shard }}
+          path: research/rage-dual-compound-hedge/shard-*.json
