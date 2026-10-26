@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       groups:
-        description: Public shards, max 3
+        description: Proposed shards. Capacity is NOT_VERIFIED.
         default: "3"
         required: false
 permissions:

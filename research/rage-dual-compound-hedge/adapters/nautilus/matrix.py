@@ -12,16 +12,18 @@ from dataclasses import dataclass
 
 from adapters.nautilus.fills import native_fill_count
 
-# Public GitHub-hosted runners are the cheap path. Three at a time is the
-# cap for this lab. It is not a claim that a larger external runner exists.
-PUBLIC_MAX_PARALLEL = 3
+# Three at a time is only a proposal. Issue #42 says the number is fixed
+# after runner capacity is measured. It has not been measured.
+PROPOSED_PUBLIC_PARALLEL = 3
+PARALLEL_CAP_STATUS = "NOT_VERIFIED"
+PUBLIC_MAX_PARALLEL = PROPOSED_PUBLIC_PARALLEL
 
 # rc6 removed nautilus_trader.backtest.models. The public smoke failed on that path.
 FEE_MODEL_IMPORT = "nautilus_trader.execution.MakerTakerFeeModel"
 BROKEN_FEE_MODEL_IMPORT = "nautilus_trader.backtest.models.MakerTakerFeeModel"
 
 RAW_INSTRUMENTS = ("XAUUSD", "USDJPY", "EURUSD", "GBPUSD", "XAGUSD")
-BOOKS = ("MAIN", "RAGE")
+BOOKS = ("MAIN", "RAGE", "MULTI")
 
 
 @dataclass(frozen=True)
@@ -83,8 +85,6 @@ def build_cells() -> tuple[BtCell, ...]:
 def shard_cells(cells: tuple[BtCell, ...] | list[BtCell], groups: int) -> tuple[tuple[BtCell, ...], ...]:
     if groups < 1:
         raise ValueError("groups must be >= 1")
-    if groups > PUBLIC_MAX_PARALLEL:
-        raise ValueError(f"public matrix refuses groups > {PUBLIC_MAX_PARALLEL}")
     buckets: list[list[BtCell]] = [[] for _ in range(groups)]
     for index, cell in enumerate(cells):
         buckets[index % groups].append(cell)

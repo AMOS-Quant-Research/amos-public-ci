@@ -11,22 +11,31 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "src"))
 
-from adapters.nautilus.matrix import PUBLIC_MAX_PARALLEL, build_cells, paired, shard_cells  # noqa: E402
+from adapters.nautilus.matrix import (  # noqa: E402
+    PARALLEL_CAP_STATUS,
+    PROPOSED_PUBLIC_PARALLEL,
+    build_cells,
+    paired,
+    shard_cells,
+)
+from adapters.portfolio.synchronized import evaluate  # noqa: E402
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--groups", type=int, default=PUBLIC_MAX_PARALLEL)
+    parser.add_argument("--groups", type=int, default=PROPOSED_PUBLIC_PARALLEL)
     args = parser.parse_args()
     cells = build_cells()
     shards = shard_cells(cells, args.groups)
     payload = {
         "live_trading": False,
         "hypothesis": "BLOCKED",
-        "public_max_parallel": PUBLIC_MAX_PARALLEL,
+        "public_max_parallel": PROPOSED_PUBLIC_PARALLEL,
+        "parallel_cap_status": PARALLEL_CAP_STATUS,
         "groups": args.groups,
         "pairs": paired(cells),
         "market_kpi": None,
+        "join": evaluate([cell.as_dict() for cell in cells]),
         "cells": [cell.as_dict() for cell in cells],
         "shards": [[cell.cell_id for cell in shard] for shard in shards],
     }
