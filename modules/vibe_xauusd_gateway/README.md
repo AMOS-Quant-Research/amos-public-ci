@@ -44,6 +44,26 @@ Only evidence with all of the following is promoted to a
 The candidate is not an order and has no execution route. Risk Governor and
 MT5 DEMO remain separate approval stages.
 
+## AE Math EDGE path
+
+For a mathematical hypothesis, add `math_hypothesis` to
+`execute_research_pipeline`. It binds the eight-stage AMOS workflow to the
+same measured path:
+
+1. source references and mathematical claim;
+2. economic rationale and falsifiers;
+3. reproducible code and unit-test references;
+4. training boundary (`train_end`) before OOS begins;
+5. this Raw Bid/Ask Nautilus run;
+6. independently stored OOS, WFO and Monte Carlo evidence;
+7. PF / EV / MaxDD / MAE / MFE evidence; and
+8. a non-live Risk Governor candidate only.
+
+Each of `oos`, `wfo`, and `monte_carlo` in the driver's measured evidence must
+contain `{ "status": "PASS", "artifact": "...", "run_id": "..." }`.
+The gateway rejects the hypothesis if any evidence is absent. This prevents a
+paper-derived equation, or an in-sample result, from becoming a trade candidate.
+
 ## Example
 
 ```python
