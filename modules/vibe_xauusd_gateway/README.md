@@ -22,6 +22,28 @@ claim, or approval for any live order. The next adapter must turn this input
 into the existing Nautilus raw-tick driver and return independently produced
 KPI evidence.
 
+## Measured pipeline contract
+
+`execute_research_pipeline(...)` launches an explicitly configured external
+driver without a shell. The driver is invoked with:
+
+```text
+<driver command> --amos-request <work_dir>/request.json \
+                 --amos-evidence <work_dir>/measured_evidence.json
+```
+
+Only evidence with all of the following is promoted to a
+`CANDIDATE_FOR_RISK_GOVERNOR` JSON artifact:
+
+- `engine: "NautilusTrader BacktestEngine"`;
+- `ohlc_resample_used: false` and `raw_ticks > 0`;
+- `native_fills > 0`;
+- KPI keys `PF`, `EV`, `MaxDD`, `MAE`, and `MFE`;
+- `live_trading: false`.
+
+The candidate is not an order and has no execution route. Risk Governor and
+MT5 DEMO remain separate approval stages.
+
 ## Example
 
 ```python
