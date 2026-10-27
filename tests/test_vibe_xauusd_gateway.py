@@ -1,7 +1,11 @@
 import unittest
 from decimal import Decimal
+import json
+import sys
+import tempfile
+from pathlib import Path
 
-from modules.vibe_xauusd_gateway import prepare_research_run
+from modules.vibe_xauusd_gateway import execute_research_pipeline, prepare_research_run
 
 
 def proposal(**overrides):
@@ -55,3 +59,39 @@ class VibeXauusdGatewayTest(unittest.TestCase):
         result = prepare_research_run(proposal(), cost(), ticks(2), "0.01", min_ticks=3)
         self.assertFalse(result.accepted)
         self.assertIn("insufficient raw ticks", result.reason)
+
+    def test_pipeline_emits_non_live_risk_candidate_only_with_measured_evidence(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            driver = root / "driver.py"
+            driver.write_text(
+                "import argparse, json\n"
+                "p=argparse.ArgumentParser(); p.add_argument('--amos-request'); p.add_argument('--amos-evidence'); a=p.parse_args()\n"
+                "json.dump({'contract':'amos.vibe.measured-evidence.v1','live_trading':False,"
+                "'engine':'NautilusTrader BacktestEngine','ohlc_resample_used':False,'raw_ticks':3,"
+                "'native_fills':2,'kpis':{'PF':1.2,'EV':2,'MaxDD':3,'MAE':4,'MFE':5}},open(a.amos_evidence,'w'))\n",
+                encoding="utf-8",
+            )
+            output = execute_research_pipeline(
+                proposal(), cost(), ticks(), "0.01", [sys.executable, str(driver)], root, min_ticks=3)
+            self.assertEqual(output["status"], "CANDIDATE_FOR_RISK_GOVERNOR")
+            self.assertFalse(output["live_trading"])
+            self.assertTrue((root / "request.json").exists())
+            self.assertTrue((root / "risk_governor_candidate.json").exists())
+
+    def test_pipeline_rejects_proxy_evidence(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            driver = root / "driver.py"
+            driver.write_text(
+                "import argparse, json\n"
+                "p=argparse.ArgumentParser(); p.add_argument('--amos-request'); p.add_argument('--amos-evidence'); a=p.parse_args()\n"
+                "json.dump({'contract':'amos.vibe.measured-evidence.v1','live_trading':False,"
+                "'engine':'NautilusTrader BacktestEngine','ohlc_resample_used':True,'raw_ticks':3,"
+                "'native_fills':2,'kpis':{'PF':1.2,'EV':2,'MaxDD':3,'MAE':4,'MFE':5}},open(a.amos_evidence,'w'))\n",
+                encoding="utf-8",
+            )
+            output = execute_research_pipeline(
+                proposal(), cost(), ticks(), "0.01", [sys.executable, str(driver)], root, min_ticks=3)
+            self.assertEqual(output["status"], "REJECTED")
+            self.assertEqual(output["reason"], "RAW_BIDASK_EVIDENCE_REQUIRED")
