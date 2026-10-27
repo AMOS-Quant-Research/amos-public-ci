@@ -1,0 +1,122 @@
+name: AMOS public-safe agent runner preflight
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/amos-agent-runner-preflight.yml'
+      - 'tests/test_runner_preflight.py'
+      - 'tests/test_amos_loop_verifier.py'
+      - 'tools/amos_loop_verifier.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  runner-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - name: Python unit checks
+        run: python3 -m unittest discover -s tests -p 'test_*.py' -v
+      - name: Install OpenCode CLI without credentials
+        shell: bash
+        run: |
+          npm install --global opencode-ai
+          opencode --version
+      - name: Agent CLI availability (diagnostic only)
+        shell: bash
+        run: |
+          if command -v claude >/dev/null 2>&1; then
+            echo 'CLAUDE_CLI_AVAILABLE=true'
+          else
+            echo 'CLAUDE_CLI_AVAILABLE=false'
+          fi
+          if command -v opencode >/dev/null 2>&1; then
+            echo 'OPENCODE_CLI_AVAILABLE=true'
+          else
+            echo 'OPENCODE_CLI_AVAILABLE=false'
+          fi
+          echo 'No provider credentials are used in this public test.'
+      - name: OpenCode generates authorized Issue #6 constant (bounded)
+        # PR CI is test-only: never spend model quota or expose secrets to PR code.
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        timeout-minutes: 4
+        env:
+          OPENCODE_DISABLE_AUTOUPDATE: "true"
+        run: |
+          # Issue #6 allows one public-safe file only; no NIM or private code.
+          rm -f agent_result.py opencode_run.log amos-loop-evidence.json
+          set +e
+          timeout --signal=TERM --kill-after=5s 160s opencode run --model opencode/nemotron-3.5-lightning-free --agent build "Issue #6: Create exactly one file agent_result.py in the current repository root containing exactly ANSWER = 7 followed by a newline. Do not modify any other file. Finish immediately." > opencode_run.log 2>&1 &
+          pid=$!
+          set -e
+          found=false
+          for i in $(seq 1 165); do
+            if [ -f agent_result.py ]; then found=true; break; fi
+            if ! kill -0 "$pid" 2>/dev/null; then break; fi
+            sleep 1
+          done
+          if kill -0 "$pid" 2>/dev/null; then kill -TERM "$pid" 2>/dev/null || true; fi
+          set +e
+          wait "$pid"
+          agent_exit=$?
+          set -e
+          echo "AGENT_EXIT_CODE=$agent_exit"
+          cat opencode_run.log
+          if [ "$found" != true ]; then
+            echo "BLOCKED: no AI-generated agent_result.py before bounded timeout" >&2
+            exit 1
+          fi
+          unexpected="$(git status --porcelain --untracked-files=all | sed -E 's/^...//' | grep -v -E '^(agent_result.py|opencode_run.log)$' || true)"
+          if [ -n "$unexpected" ]; then
+            echo "BLOCKED: unexpected paths $unexpected" >&2
+            exit 1
+          fi
+          python3 - <<'PY'
+          from pathlib import Path
+          import ast
+          p = Path("agent_result.py")
+          assert p.read_bytes() == b"ANSWER = 7\n", "Generated file differs from Issue #6 contract"
+          tree = ast.parse(p.read_text())
+          assert len(tree.body) == 1
+          ns = {}
+          exec(compile(tree, str(p), "exec"), ns)
+          assert ns["ANSWER"] == 7
+          print("AGENT_ISSUE_6_FILE_VALIDATED=true")
+          PY
+          echo "AGENT_CLEAN_EXIT=$([ "$agent_exit" -eq 0 ] && echo true || echo false)"
+          python3 - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          data = Path("agent_result.py").read_bytes()
+          evidence = {
+              "schema_version": "amos-loop-evidence.v1",
+              "task_id": "AMOS-P0-ISSUE-6",
+              "issue_url": "https://github.com/AMOS-Quant-Research/amos-public-ci/issues/6",
+              "runner_repo": os.environ["GITHUB_REPOSITORY"],
+              "workflow_run_id": os.environ["GITHUB_RUN_ID"],
+              "workflow_attempt": os.environ["GITHUB_RUN_ATTEMPT"],
+              "agent_name": "OpenCode",
+              "model_name": "opencode/nemotron-3.5-lightning-free",
+              "generated_file": "agent_result.py",
+              "generated_sha256": hashlib.sha256(data).hexdigest(),
+              "test_exit_code": 0,
+              "ai_generated_commit_sha": None,
+              "draft_pr_url": None,
+              "central_report_comment_url": None,
+              "completion_state": "PARTIAL",
+              "single_loop_verified": False
+          }
+          Path("amos-loop-evidence.json").write_text(json.dumps(evidence, indent=2) + "\n")
+          print("EVIDENCE_JSON_CREATED=true")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: opencode-public-synthetic-evidence
+          path: |
+            opencode_run.log
+            agent_result.py
+            amos-loop-evidence.json
+          if-no-files-found: warn
+          retention-days: 1
