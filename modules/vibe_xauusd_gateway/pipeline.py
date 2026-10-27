@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Iterable, Mapping, Sequence
 
 from .gateway import prepare_research_run
+from .math_edge import MathEdgeHypothesis, validate_math_evidence
 
 RESEARCH_CONTRACT = "amos.vibe.research-run.v1"
 EVIDENCE_CONTRACT = "amos.vibe.measured-evidence.v1"
@@ -17,7 +18,7 @@ def _write_json(path: Path, payload: Mapping[str, object]) -> None:
     path.write_text(json.dumps(payload, indent=2, sort_keys=True, default=str) + "\n", encoding="utf-8")
 
 
-def _evidence_gate(payload: Mapping[str, object]) -> tuple[bool, str]:
+def _evidence_gate(payload: Mapping[str, object], require_math_validation: bool) -> tuple[bool, str]:
     """Reject unmeasured, proxy, or live-capable outputs before risk review."""
     if payload.get("contract") != EVIDENCE_CONTRACT:
         return False, "EVIDENCE_CONTRACT_MISMATCH"
@@ -42,6 +43,8 @@ def _evidence_gate(payload: Mapping[str, object]) -> tuple[bool, str]:
     required = {"PF", "EV", "MaxDD", "MAE", "MFE"}
     if not required.issubset(kpis):
         return False, "INCOMPLETE_KPI_EVIDENCE"
+    if require_math_validation:
+        return validate_math_evidence(payload)
     return True, "MEASURED_EVIDENCE_READY_FOR_RISK_REVIEW"
 
 
@@ -53,6 +56,7 @@ def execute_research_pipeline(
     driver_command: Sequence[str],
     work_dir: str | Path,
     min_ticks: int = 1_000,
+    math_hypothesis: Mapping[str, object] | None = None,
 ) -> dict[str, object]:
     """Run a configured, external driver and emit an approval *candidate*.
 
@@ -64,6 +68,7 @@ def execute_research_pipeline(
     work = Path(work_dir)
     ticks_list = list(ticks)
     preflight = prepare_research_run(proposal, cost_model, ticks_list, lots, min_ticks=min_ticks)
+    math = MathEdgeHypothesis.from_mapping(math_hypothesis) if math_hypothesis is not None else None
     request_path = work / "request.json"
     evidence_path = work / "measured_evidence.json"
     candidate_path = work / "risk_governor_candidate.json"
@@ -75,6 +80,8 @@ def execute_research_pipeline(
         "lots": str(lots),
         "preflight": preflight.as_dict(),
     }
+    if math is not None:
+        base["math_edge_hypothesis"] = math.as_dict()
     _write_json(request_path, base)
     if not preflight.accepted:
         candidate = {"contract": "amos.approved-order-candidate.v1", "live_trading": False,
@@ -98,7 +105,7 @@ def execute_research_pipeline(
                      "status": "REJECTED", "reason": f"INVALID_EVIDENCE: {exc}", "request": str(request_path)}
         _write_json(candidate_path, candidate)
         return candidate
-    accepted, reason = _evidence_gate(evidence)
+    accepted, reason = _evidence_gate(evidence, require_math_validation=math is not None)
     candidate = {
         "contract": "amos.approved-order-candidate.v1",
         "live_trading": False,
