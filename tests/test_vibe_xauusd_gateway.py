@@ -27,6 +27,22 @@ def ticks(count=3):
             for i in range(count)]
 
 
+def math_hypothesis(**overrides):
+    data = {
+        "hypothesis_id": "ae-expected-value-001",
+        "source_refs": ["doi:10.0000/example"],
+        "mathematical_claim": "Conditional expected value remains positive after costs.",
+        "economic_rationale": "The signal captures a liquidity transition.",
+        "falsifiers": ["OOS EV is non-positive", "cost-adjusted PF is below one"],
+        "code_ref": "strategies/ae_ev_001.py",
+        "unit_test_refs": ["tests/test_ae_ev_001.py"],
+        "train_end": "2025-01-01",
+        "oos_start": "2025-01-02",
+    }
+    data.update(overrides)
+    return data
+
+
 class VibeXauusdGatewayTest(unittest.TestCase):
     def test_accepts_bid_ask_ticks_and_exposes_cost_and_margin(self):
         result = prepare_research_run(proposal(), cost(), ticks(), "0.01", min_ticks=3)
@@ -95,3 +111,43 @@ class VibeXauusdGatewayTest(unittest.TestCase):
                 proposal(), cost(), ticks(), "0.01", [sys.executable, str(driver)], root, min_ticks=3)
             self.assertEqual(output["status"], "REJECTED")
             self.assertEqual(output["reason"], "RAW_BIDASK_EVIDENCE_REQUIRED")
+
+    def test_math_edge_requires_oos_wfo_and_monte_carlo_evidence(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            driver = root / "driver.py"
+            driver.write_text(
+                "import argparse, json\n"
+                "p=argparse.ArgumentParser(); p.add_argument('--amos-request'); p.add_argument('--amos-evidence'); a=p.parse_args()\n"
+                "json.dump({'contract':'amos.vibe.measured-evidence.v1','live_trading':False,"
+                "'engine':'NautilusTrader BacktestEngine','ohlc_resample_used':False,'raw_ticks':3,'native_fills':2,"
+                "'kpis':{'PF':1.2,'EV':2,'MaxDD':3,'MAE':4,'MFE':5},'math_validation':{"
+                "'oos':{'status':'PASS','artifact':'oos.json','run_id':'oos-1'},"
+                "'wfo':{'status':'PASS','artifact':'wfo.json','run_id':'wfo-1'},"
+                "'monte_carlo':{'status':'PASS','artifact':'mc.json','run_id':'mc-1'}}},open(a.amos_evidence,'w'))\n",
+                encoding="utf-8",
+            )
+            output = execute_research_pipeline(proposal(), cost(), ticks(), "0.01", [sys.executable, str(driver)],
+                                               root, min_ticks=3, math_hypothesis=math_hypothesis())
+            self.assertEqual(output["status"], "CANDIDATE_FOR_RISK_GOVERNOR")
+            request = json.loads((root / "request.json").read_text(encoding="utf-8"))
+            self.assertEqual(request["math_edge_hypothesis"]["hypothesis_id"], "ae-expected-value-001")
+
+    def test_math_edge_rejects_missing_monte_carlo_evidence(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            driver = root / "driver.py"
+            driver.write_text(
+                "import argparse, json\n"
+                "p=argparse.ArgumentParser(); p.add_argument('--amos-request'); p.add_argument('--amos-evidence'); a=p.parse_args()\n"
+                "json.dump({'contract':'amos.vibe.measured-evidence.v1','live_trading':False,"
+                "'engine':'NautilusTrader BacktestEngine','ohlc_resample_used':False,'raw_ticks':3,'native_fills':2,"
+                "'kpis':{'PF':1.2,'EV':2,'MaxDD':3,'MAE':4,'MFE':5},'math_validation':{"
+                "'oos':{'status':'PASS','artifact':'oos.json','run_id':'oos-1'},"
+                "'wfo':{'status':'PASS','artifact':'wfo.json','run_id':'wfo-1'}}},open(a.amos_evidence,'w'))\n",
+                encoding="utf-8",
+            )
+            output = execute_research_pipeline(proposal(), cost(), ticks(), "0.01", [sys.executable, str(driver)],
+                                               root, min_ticks=3, math_hypothesis=math_hypothesis())
+            self.assertEqual(output["status"], "REJECTED")
+            self.assertEqual(output["reason"], "MATH_MONTE_CARLO_EVIDENCE_REQUIRED")
