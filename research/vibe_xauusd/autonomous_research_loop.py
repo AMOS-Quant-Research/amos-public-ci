@@ -26,6 +26,25 @@ PLANS = [
 ]
 
 
+def load_plans():
+    # New hypotheses are delivered by AE Math Paper Watch as reviewed JSON.
+    # Do not execute arbitrary text from a report as Python code.
+    plans = list(PLANS)
+    inbox = HERE / "ae_candidate_registry.json"
+    if inbox.exists():
+        data = json.loads(inbox.read_text(encoding="utf-8"))
+        if data.get("contract") != "amos.ae.candidate-registry.v1":
+            raise ValueError("unsupported AE candidate registry")
+        for p in data.get("candidates", []):
+            if set(p) != {"lambda", "momentum", "lookback"}:
+                raise ValueError("candidate fields not allowlisted")
+            if not (0.1 <= float(p["lambda"]) <= 5 and 2 <= int(p["momentum"]) <= 30 and 30 <= int(p["lookback"]) <= 500):
+                raise ValueError("candidate parameters out of safe research range")
+            if p not in plans:
+                plans.append(p)
+    return plans
+
+
 def render(plan):
     s = (HERE / "ae_original_kelly.py").read_text(encoding="utf-8")
     replacements = [
@@ -80,7 +99,8 @@ def run(archive, output, ledger_path, cycles):
     driver_sha = patch(VENDORED_DRIVER, driver)
     completed_keys = {x["candidate_key"] for x in ledger["completed"]}
     new_results = []
-    for plan in PLANS:
+    plans = load_plans()
+    for plan in plans:
         source = render(plan)
         source_sha = hashlib.sha256(source.encode()).hexdigest()
         candidate_key = hashlib.sha256((source_sha + driver_sha + "56bf3bcfc3221b6cccd9cd64c03425952ebc98baf510e39058b65372772bdf38").encode()).hexdigest()
@@ -144,7 +164,8 @@ def run(archive, output, ledger_path, cycles):
     summary = {"contract": "amos.ae.autonomous-run.v1",
                "new_cycles": len(new_results), "total_completed": len(ledger["completed"]),
                "active_driver_completed": active_completed,
-               "exhausted": active_completed >= len(PLANS),
+               "waiting_for_new_hypothesis": active_completed >= len(plans),
+               "registry_size": len(plans),
                "research_only": True, "llm_hypothesis_generation_verified": False,
                "ledger_path": str(ledger_path),
                "new_results": new_results}
