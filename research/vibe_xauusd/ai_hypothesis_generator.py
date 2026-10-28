@@ -148,6 +148,7 @@ def propose(ledger_path, registry_path, output_path, count):
     report = {"contract": "amos.ae.proposal-evidence.v1", "generator": source,
               "nim_status": status, "candidate_count": len(chosen),
               "historical_native_results": len(completed),
+              "input_ledger_sha256": hashlib.sha256(ledger_path.read_bytes()).hexdigest() if ledger_path.exists() else None,
               "candidate_parameters": chosen,
               "paper_original_math": "RC_KELLY_OBJECTIVE_AND_MOMENT",
               "strategy_mapping": "rolling sample-average Kelly on M5 momentum",
