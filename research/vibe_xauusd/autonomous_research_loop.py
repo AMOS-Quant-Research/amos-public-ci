@@ -140,9 +140,11 @@ def run(archive, output, ledger_path, cycles):
         new_results.append(result)
         print("AUTONOMOUS_CYCLE", len(new_results), "CANDIDATE", candidate_key[:12],
               "VERDICT", result["verdict"], "NATIVE_FILLS", result["native_fills"], flush=True)
+    active_completed = sum(1 for x in ledger["completed"] if x.get("driver_sha256") == driver_sha)
     summary = {"contract": "amos.ae.autonomous-run.v1",
                "new_cycles": len(new_results), "total_completed": len(ledger["completed"]),
-               "exhausted": len(ledger["completed"]) >= len(PLANS),
+               "active_driver_completed": active_completed,
+               "exhausted": active_completed >= len(PLANS),
                "research_only": True, "llm_hypothesis_generation_verified": False,
                "ledger_path": str(ledger_path),
                "new_results": new_results}
