@@ -82,15 +82,8 @@ def run(archive, output):
     from nautilus_trader.persistence.catalog import ParquetDataCatalog
     catalog_instruments = ParquetDataCatalog(str(catalog)).instruments()
     print("CATALOG_INSTRUMENTS", [str(x.id) for x in catalog_instruments], flush=True)
-    print("CATALOG_FILES", [str(p.relative_to(catalog)) for p in catalog.rglob("*.parquet")], flush=True)
-    import pyarrow.parquet as pq
-    for p in catalog.rglob("*.parquet"):
-        print("PARQUET_SCHEMA", str(p.relative_to(catalog)), str(pq.read_schema(p))[:1600], flush=True)
-    from nautilus_trader.model.data import QuoteTick
-    try:
-        print("QUOTE_COUNT", len(ParquetDataCatalog(str(catalog)).query(data_cls=QuoteTick, identifiers=["XAUUSD.SIM"])), flush=True)
-    except Exception as e:
-        print("QUOTE_QUERY_ERROR", type(e).__name__, str(e)[:500], flush=True)
+    if not catalog_instruments:
+        raise ValueError("Nautilus catalog has no instruments")
     results = []
     for index, (candidate, threshold, cap) in enumerate(HYPOTHESES, 1):
         run_dir = output / "runs" / f"{index:02d}_{candidate}"
@@ -129,6 +122,11 @@ def run(archive, output):
             item["kpis"] = data.get("kpis")
             item["cost_model"] = data.get("cost_model")
             item["status"] = "MEASURED_RESEARCH_ONLY" if item["fills_report_rows"] and item["raw_ticks"] else "NO_VERIFIED_FILLS"
+            pf = item["kpis"].get("PF") if isinstance(item["kpis"], dict) else None
+            ev = item["kpis"].get("EV") if isinstance(item["kpis"], dict) else None
+            item["research_verdict"] = ("REJECT" if pf is not None and ev is not None and pf < 1.0 and ev < 0
+                                         else "HOLD_FOR_OOS_COSTS_AND_RISK")
+            item["paper_formula_implemented_in_native_strategy"] = False
         else:
             item["status"] = "FAILED"
             item["error_tail"] = (proc.stderr or proc.stdout)[-800:]
