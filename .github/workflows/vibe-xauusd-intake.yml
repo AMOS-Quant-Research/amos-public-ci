@@ -1,0 +1,20 @@
+name: Vibe XAUUSD Intake (offline)
+
+on:
+  pull_request:
+    paths:
+      - 'research/vibe_xauusd/**'
+      - '.github/workflows/vibe-xauusd-intake.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  manifest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate intake contract (offline)
+        run: python3 -m unittest discover -s research/vibe_xauusd -p 'test_*.py' -v
