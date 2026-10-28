@@ -1,4 +1,10 @@
 {
   "contract": "amos.ae.candidate-registry.v1",
-  "candidates": []
+  "candidates": [
+    {
+      "lambda": 1.25,
+      "momentum": 6,
+      "lookback": 90
+    }
+  ]
 }
