@@ -1,0 +1,23 @@
+name: Dagram public Playwright probe
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install playwright==1.56.0
+      - run: python -m playwright install --with-deps chromium
+      - run: python research/dagram/probe.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dagram-public-probe
+          path: artifacts/dagram/
+          retention-days: 3
