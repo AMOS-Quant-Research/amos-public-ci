@@ -18,7 +18,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.12'
       - name: Install public research dependencies
         run: python -m pip install 'nautilus_trader==1.230.0' pandas numpy pyarrow gdown
       - name: Fetch original public Drive package
