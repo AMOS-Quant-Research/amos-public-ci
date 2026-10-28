@@ -6,6 +6,7 @@ on:
       - 'research/vibe_xauusd/ai_hypothesis_generator.py'
       - 'research/vibe_xauusd/test_ai_hypothesis_generator.py'
       - 'research/vibe_xauusd/test_nim_provenance.py'
+      - 'research/vibe_xauusd/verify_llm_native_proof.py'
       - 'research/vibe_xauusd/ae_candidate_registry.json'
       - 'research/vibe_xauusd/ae_original_kelly.py'
       - 'research/vibe_xauusd/patch_native_fractional_sizing.py'
@@ -63,6 +64,13 @@ jobs:
             --output /tmp/amos-vibe-state/run \
             --ledger /tmp/amos-vibe-state/ledger.json \
             --cycles 3
+      - name: Verify real LLM hypothesis to Native BT evidence
+        run: |
+          python research/vibe_xauusd/verify_llm_native_proof.py \
+            --proposal /tmp/amos-vibe-state/proposed_candidates.evidence.json \
+            --ledger /tmp/amos-vibe-state/ledger.json \
+            --summary /tmp/amos-vibe-state/run/autonomous_summary.json \
+            --output /tmp/amos-vibe-state/llm_native_proof.json
       - name: Save checkpoint for future unattended cycles
         if: always()
         uses: actions/cache/save@v4
@@ -78,6 +86,7 @@ jobs:
             /tmp/amos-vibe-state/ledger.json
             /tmp/amos-vibe-state/proposed_candidates.json
             /tmp/amos-vibe-state/proposed_candidates.evidence.json
+            /tmp/amos-vibe-state/llm_native_proof.json
             /tmp/amos-vibe-state/run/autonomous_summary.json
             /tmp/amos-vibe-state/run/last_failure.json
             /tmp/amos-vibe-state/run/runs/**/run_card.json
