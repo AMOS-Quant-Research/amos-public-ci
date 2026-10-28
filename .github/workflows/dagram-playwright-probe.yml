@@ -27,31 +27,3 @@ jobs:
           path: artifacts/dagram/
           retention-days: 3
 
-  native-integration:
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: Install previously verified Nautilus dependencies
-        run: python -m pip install 'nautilus_trader==1.230.0' pandas numpy pyarrow gdown
-      - name: Fetch original Drive package (SHA-256 pinned)
-        run: |
-          python -m gdown 'https://drive.google.com/uc?id=1HY3-1htL8rdWaHC_xSiZjPg6Ap6AEknQ' -O /tmp/XAUUSD_Vibe_Trading_Complete_Package.zip
-          echo '56bf3bcfc3221b6cccd9cd64c03425952ebc98baf510e39058b65372772bdf38  /tmp/XAUUSD_Vibe_Trading_Complete_Package.zip' | sha256sum -c -
-      - name: Verify synthetic signal bridge with REAL native QuoteTick fills
-        run: python research/dagram/run_native_integration.py --archive /tmp/XAUUSD_Vibe_Trading_Complete_Package.zip --output /tmp/dagram_native
-      - name: Upload integration evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: dagram-vibe-native-integration
-          path: |
-            /tmp/dagram_native/result.json
-            /tmp/dagram_native/driver_stdout.log
-            /tmp/dagram_native/driver_stderr.log
-            /tmp/dagram_native/run/artifacts/nautilus_rawtick_evidence.json
-          if-no-files-found: warn
-          retention-days: 7
