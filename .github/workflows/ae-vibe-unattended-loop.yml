@@ -4,6 +4,7 @@ on:
     paths:
       - 'research/vibe_xauusd/autonomous_research_loop.py'
       - 'research/vibe_xauusd/ae_original_kelly.py'
+      - 'research/vibe_xauusd/patch_native_fractional_sizing.py'
       - '.github/workflows/ae-vibe-unattended-loop.yml'
   workflow_dispatch:
   schedule:
