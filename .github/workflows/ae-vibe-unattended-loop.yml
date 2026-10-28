@@ -7,6 +7,7 @@ on:
       - 'research/vibe_xauusd/test_ai_hypothesis_generator.py'
       - 'research/vibe_xauusd/test_nim_provenance.py'
       - 'research/vibe_xauusd/verify_llm_native_proof.py'
+      - 'research/vibe_xauusd/test_llm_native_proof.py'
       - 'research/vibe_xauusd/ae_candidate_registry.json'
       - 'research/vibe_xauusd/ae_original_kelly.py'
       - 'research/vibe_xauusd/patch_native_fractional_sizing.py'
@@ -45,6 +46,7 @@ jobs:
         run: |
           python -m unittest discover -s research/vibe_xauusd -p 'test_ai_hypothesis_generator.py' -v
           python -m unittest discover -s research/vibe_xauusd -p 'test_nim_provenance.py' -v
+          python -m unittest discover -s research/vibe_xauusd -p 'test_llm_native_proof.py' -v
       - name: Propose next 3 hypotheses from prior native outcomes
         env:
           NVIDIA_NIM_API_KEY: ${{ secrets.NVIDIA_NIM_API_KEY }}
