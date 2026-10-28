@@ -79,6 +79,10 @@ def run(archive, output):
     validate_archive(archive)
     output = Path(output).resolve()
     driver, catalog = extract_native(archive, output / "source")
+    from nautilus_trader.persistence.catalog import ParquetDataCatalog
+    catalog_instruments = ParquetDataCatalog(str(catalog)).instruments()
+    print("CATALOG_INSTRUMENTS", [str(x.id) for x in catalog_instruments], flush=True)
+    print("CATALOG_FILES", [str(p.relative_to(catalog)) for p in catalog.rglob("*.parquet")], flush=True)
     results = []
     for index, (candidate, threshold, cap) in enumerate(HYPOTHESES, 1):
         run_dir = output / "runs" / f"{index:02d}_{candidate}"
