@@ -1,11 +1,12 @@
 """Offline dagram observation -> Vibe SignalEngine adapter. Research only; no orders."""
 import json
+import os
 from pathlib import Path
 import pandas as pd
 
 class SignalEngine:
     def __init__(self, observations_path="artifacts/dagram_publications.json"):
-        self.path=Path(observations_path)
+        self.path=Path(os.environ.get("AMOS_DAGRAM_OBSERVATIONS", observations_path))
     def generate(self, bars):
         if set(bars)!={"XAUUSD"}: raise ValueError("XAUUSD only")
         idx=pd.DatetimeIndex(bars["XAUUSD"].index)
