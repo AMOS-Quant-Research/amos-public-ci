@@ -83,6 +83,14 @@ def run(archive, output):
     catalog_instruments = ParquetDataCatalog(str(catalog)).instruments()
     print("CATALOG_INSTRUMENTS", [str(x.id) for x in catalog_instruments], flush=True)
     print("CATALOG_FILES", [str(p.relative_to(catalog)) for p in catalog.rglob("*.parquet")], flush=True)
+    import pyarrow.parquet as pq
+    for p in catalog.rglob("*.parquet"):
+        print("PARQUET_SCHEMA", str(p.relative_to(catalog)), str(pq.read_schema(p))[:1600], flush=True)
+    from nautilus_trader.model.data import QuoteTick
+    try:
+        print("QUOTE_COUNT", len(ParquetDataCatalog(str(catalog)).query(data_cls=QuoteTick, identifiers=["XAUUSD.SIM"])), flush=True)
+    except Exception as e:
+        print("QUOTE_QUERY_ERROR", type(e).__name__, str(e)[:500], flush=True)
     results = []
     for index, (candidate, threshold, cap) in enumerate(HYPOTHESES, 1):
         run_dir = output / "runs" / f"{index:02d}_{candidate}"
