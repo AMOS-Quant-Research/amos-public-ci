@@ -25,7 +25,11 @@ def patch(source: Path, dest: Path):
                 fraction = min(1.0, max(0.0, abs(self.target)))
                 if fraction < 1.0:
                     self.fractional_size_orders += 1
-                qty = inst.make_qty(self.config.quantity * Decimal(str(fraction)))
+                requested = self.config.quantity * Decimal(str(fraction))
+                if requested < inst.size_increment or (inst.min_quantity is not None and requested < inst.min_quantity):
+                    self.sizing_rejections += 1
+                    return
+                qty = inst.make_qty(requested)
                 if _f(qty) <= 0 or (inst.min_quantity is not None and qty < inst.min_quantity):
                     self.sizing_rejections += 1
                     return
