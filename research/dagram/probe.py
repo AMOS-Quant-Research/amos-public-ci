@@ -14,6 +14,27 @@ def safe_event(event):
         payload=json.loads(raw)
         if isinstance(payload,dict):
             out["keys"]=sorted(str(k)[:50] for k in payload.keys())[:30]
+            if isinstance(payload.get("pubs"),dict):
+                out["publications"]=[]
+                for tf,pub in list(payload["pubs"].items())[:20]:
+                    if not isinstance(pub,dict): continue
+                    plan=pub.get("plan")
+                    item={"tf":str(tf)[:20],"revision":pub.get("revision"),"plan_present":isinstance(plan,dict),"keys":sorted(str(k)[:40] for k in pub.keys())[:20]}
+                    if isinstance(plan,dict):
+                        item["plan_keys"]=sorted(str(k)[:40] for k in plan.keys())[:30]
+                        for k in ("side","issuedAt","at","entry","sl","tp"):
+                            v=plan.get(k)
+                            if isinstance(v,(str,int,float)) and len(str(v))<80: item[k]=v
+                    out["publications"].append(item)
+            if isinstance(payload.get("msg"),dict):
+                pub=payload["msg"]
+                plan=pub.get("plan")
+                out["publication"]={"tf":payload.get("tf"),"revision":pub.get("revision"),"plan_present":isinstance(plan,dict)}
+                if isinstance(plan,dict):
+                    out["publication"]["plan_keys"]=sorted(str(k)[:40] for k in plan.keys())[:30]
+                    for k in ("side","issuedAt","at","entry","sl","tp"):
+                        v=plan.get(k)
+                        if isinstance(v,(str,int,float)) and len(str(v))<80: out["publication"][k]=v
             candidates=[payload]+[payload[k] for k in ("publication","plan","data","payload","signal") if isinstance(payload.get(k),dict)]
             for item in candidates:
                 for key in ("side","direction","symbol","timeframe","tf","issuedAt","timestamp","status"):
