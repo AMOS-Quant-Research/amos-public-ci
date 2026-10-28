@@ -86,7 +86,8 @@ def heuristic(completed, already, n):
 
 
 def nim_propose(completed, already, n):
-    token, model = os.getenv("NVIDIA_API_KEY", ""), os.getenv("NVIDIA_NIM_MODEL", "")
+    token = os.getenv("NVIDIA_NIM_API_KEY") or os.getenv("NVIDIA_API_KEY", "")
+    model = os.getenv("NVIDIA_NIM_MODEL", "")
     if not token or not model:
         return None, "not_configured"
     summaries = [{"plan": x.get("plan"), "kpis": x.get("kpis"),
@@ -137,6 +138,7 @@ def propose(ledger_path, registry_path, output_path, count):
     already = [x["plan"] for x in completed if valid(x.get("plan"))] + registry
     model, status = nim_propose(completed, already, count)
     chosen = list(model or [])
+    model_candidate_count = len(chosen)
     source = "nvidia_nim_validated" if chosen else "metric_guided_deterministic"
     if len(chosen) < count:
         chosen += heuristic(completed, already + chosen, count - len(chosen))
@@ -146,8 +148,12 @@ def propose(ledger_path, registry_path, output_path, count):
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(payload, indent=2, allow_nan=False), encoding="utf-8")
     report = {"contract": "amos.ae.proposal-evidence.v1", "generator": source,
+              "llm_generated_candidate_count": model_candidate_count,
+              "heuristic_generated_candidate_count": len(chosen) - model_candidate_count,
+              "llm_hypothesis_generation_verified": model_candidate_count > 0,
               "nim_status": status, "candidate_count": len(chosen),
               "historical_native_results": len(completed),
+              "historical_feedback_used": bool(rank(completed)),
               "input_ledger_sha256": hashlib.sha256(ledger_path.read_bytes()).hexdigest() if ledger_path.exists() else None,
               "candidate_parameters": chosen,
               "paper_original_math": "RC_KELLY_OBJECTIVE_AND_MOMENT",
