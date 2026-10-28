@@ -8,6 +8,7 @@ No live trading; no promotion; no simulated success.
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -40,6 +41,23 @@ def load_plans():
                 raise ValueError("candidate fields not allowlisted")
             if not (0.1 <= float(p["lambda"]) <= 5 and 2 <= int(p["momentum"]) <= 30 and 30 <= int(p["lookback"]) <= 500):
                 raise ValueError("candidate parameters out of safe research range")
+            if p not in plans:
+                plans.append(p)
+    generated = os.getenv("AMOS_AE_GENERATED_CANDIDATES", "")
+    if generated:
+        gp = Path(generated)
+        if not gp.is_file():
+            raise FileNotFoundError("generated research candidates missing")
+        generated_data = json.loads(gp.read_text(encoding="utf-8"))
+        if generated_data.get("contract") != "amos.ae.candidate-registry.v1":
+            raise ValueError("invalid generated candidate contract")
+        for p in generated_data.get("candidates", []):
+            if set(p) != {"lambda", "momentum", "lookback"}:
+                raise ValueError("generated candidate fields not allowlisted")
+            if type(p["momentum"]) is not int or type(p["lookback"]) is not int or type(p["lambda"]) not in (int, float):
+                raise ValueError("invalid generated candidate types")
+            if not (0.1 <= p["lambda"] <= 5 and 2 <= p["momentum"] <= 30 and 30 <= p["lookback"] <= 500):
+                raise ValueError("generated candidate outside research bounds")
             if p not in plans:
                 plans.append(p)
     return plans
