@@ -43,3 +43,15 @@
 
 ## Forbidden
 No unreviewed whole-ZIP upload to a public repo; no 19 MB bundled font redistribution; no secrets; no main push or auto-merge; no live trading; no billed provider calls; no weakening existing Risk Governor or changing frozen gates. Scheduler stays OFF until a model provider and always-on host are independently verified.
+
+## Actual CI-native execution (2026-10-28)
+- Workflow: `Vibe XAUUSD Native AE Watch Research`, run **40672180281**, **SUCCESS**.
+- CI downloaded the **original** 31,191,962-byte Google Drive ZIP; SHA-256 verified; extracted the original Vibe Nautilus driver and both catalog Parquet files into an ephemeral runner. The ZIP and large binaries were **not** committed to GitHub.
+- Python 3.12 + NautilusTrader 1.230.0, catalog root fixed to directory **containing** `data/`.
+- Both distinct hypothesis proxies executed on **208,501 real XAUUSD Dukascopy Bid/Ask QuoteTicks** using NautilusTrader. Evidence artifacts uploaded to CI run.
+- `AE_DDR_PRICE_PROXY`: **278 native fill-report rows** (package's `native_fills=139` actually counts realized-PnL rows); PF **0.215289**, EV **-0.892086**, MaxDD **126.42 absolute USD**. **REJECT**.
+- `AE_CONFORMAL_OCE_PRICE_PROXY`: **224 native fill-report rows** (package's `native_fills=112` actually counts realized-PnL rows); PF **0.171876**, EV **-1.052679**, MaxDD **120.32 absolute USD**. **REJECT**.
+- **CRITICAL:** these are *price-based proxies*, not implementations of portfolio Dynamic DDR or Conformal/OCE paper formulas. The separate `ae_math_gates.py` implements math gates for later integration. Do not claim the papers themselves were empirically validated.
+- Commission and slippage were set to zero, execution profile status `ASSUMPTION_ONLY`; MAE/MFE unavailable. No broker-realistic profitability inference.
+- This is a verified **two-candidate automated batch**, **not** a verified continuous autonomous LLM hypothesis-generation loop. No new data trigger, permanent service, or model credentials verified.
+- Evidence URL: https://github.com/AMOS-Quant-Research/amos-public-ci/actions/runs/40672180281
