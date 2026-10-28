@@ -17,5 +17,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Validate intake contract (offline)
-        run: python3 -m unittest discover -s research/vibe_xauusd -p 'test_intake_manifest.py' -v
+        run: |
+          python3 -m unittest discover -s research/vibe_xauusd -p 'test_intake_manifest.py' -v
           python3 -m unittest discover -s research/vibe_xauusd -p 'test_ae_math_gates.py' -v
