@@ -52,7 +52,7 @@ def extract_native(archive, target):
             with z.open(member) as src, dest.open("wb") as dst:
                 import shutil
                 shutil.copyfileobj(src, dst)
-    return target / DRIVER, target / "xauusd-data/.work/vibe-math-xauusd-20260727/data"
+    return target / DRIVER, target / "xauusd-data/.work/vibe-math-xauusd-20260727"
 
 
 def signal_source(threshold, cap):
