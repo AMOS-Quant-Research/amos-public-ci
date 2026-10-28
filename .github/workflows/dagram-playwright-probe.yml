@@ -1,6 +1,10 @@
 name: Dagram public Playwright probe
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - 'research/dagram/**'
+      - '.github/workflows/dagram-playwright-probe.yml'
 permissions:
   contents: read
 jobs:
