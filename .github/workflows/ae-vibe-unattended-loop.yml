@@ -3,6 +3,8 @@ on:
   pull_request:
     paths:
       - 'research/vibe_xauusd/autonomous_research_loop.py'
+      - 'research/vibe_xauusd/ai_hypothesis_generator.py'
+      - 'research/vibe_xauusd/test_ai_hypothesis_generator.py'
       - 'research/vibe_xauusd/ae_candidate_registry.json'
       - 'research/vibe_xauusd/ae_original_kelly.py'
       - 'research/vibe_xauusd/patch_native_fractional_sizing.py'
@@ -37,7 +39,20 @@ jobs:
         run: |
           python -m gdown 'https://drive.google.com/uc?id=1HY3-1htL8rdWaHC_xSiZjPg6Ap6AEknQ' -O /tmp/vibe-original.zip
           echo '56bf3bcfc3221b6cccd9cd64c03425952ebc98baf510e39058b65372772bdf38  /tmp/vibe-original.zip' | sha256sum -c -
+      - name: Test closed-loop hypothesis generator
+        run: python -m unittest discover -s research/vibe_xauusd -p 'test_ai_hypothesis_generator.py' -v
+      - name: Propose next 3 hypotheses from prior native outcomes
+        env:
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+          NVIDIA_NIM_MODEL: ${{ vars.NVIDIA_NIM_MODEL }}
+        run: |
+          python research/vibe_xauusd/ai_hypothesis_generator.py \
+            --ledger /tmp/amos-vibe-state/ledger.json \
+            --output /tmp/amos-vibe-state/proposed_candidates.json \
+            --count 3
       - name: Run 3 unattended native paper-hypothesis cycles
+        env:
+          AMOS_AE_GENERATED_CANDIDATES: /tmp/amos-vibe-state/proposed_candidates.json
         run: |
           python research/vibe_xauusd/autonomous_research_loop.py \
             --archive /tmp/vibe-original.zip \
@@ -57,6 +72,8 @@ jobs:
           name: ae-vibe-autonomous-${{ github.run_id }}
           path: |
             /tmp/amos-vibe-state/ledger.json
+            /tmp/amos-vibe-state/proposed_candidates.json
+            /tmp/amos-vibe-state/proposed_candidates.evidence.json
             /tmp/amos-vibe-state/run/autonomous_summary.json
             /tmp/amos-vibe-state/run/last_failure.json
             /tmp/amos-vibe-state/run/runs/**/run_card.json
