@@ -84,6 +84,18 @@ def run(archive, output):
     print("CATALOG_INSTRUMENTS", [str(x.id) for x in catalog_instruments], flush=True)
     if not catalog_instruments:
         raise ValueError("Nautilus catalog has no instruments")
+    from nautilus_trader.model.data import QuoteTick
+    raw = ParquetDataCatalog(str(catalog)).query(data_cls=QuoteTick, identifiers=["XAUUSD.SIM"])
+    if len(raw) < 1000:
+        raise ValueError("Raw Bid/Ask input below 1000 QuoteTicks")
+    last_ts = -1
+    for tick in raw:
+        if tick.ts_event < last_ts:
+            raise ValueError("non-monotonic QuoteTick timestamp")
+        if tick.ask_price < tick.bid_price:
+            raise ValueError("invalid QuoteTick ask < bid")
+        last_ts = tick.ts_event
+    print("INPUT_PREFLIGHT_OK", len(raw), "QuoteTicks", flush=True)
     results = []
     for index, (candidate, threshold, cap) in enumerate(HYPOTHESES, 1):
         run_dir = output / "runs" / f"{index:02d}_{candidate}"
