@@ -179,10 +179,16 @@ def run(archive, output, ledger_path, cycles):
         print("AUTONOMOUS_CYCLE", len(new_results), "CANDIDATE", candidate_key[:12],
               "VERDICT", result["verdict"], "NATIVE_FILLS", result["native_fills"], flush=True)
     active_completed = sum(1 for x in ledger["completed"] if x.get("driver_sha256") == driver_sha)
+    source_data_hash = "56bf3bcfc3221b6cccd9cd64c03425952ebc98baf510e39058b65372772bdf38"
+    def candidate_hash(plan):
+        source_hash = hashlib.sha256(render(plan).encode()).hexdigest()
+        return hashlib.sha256((source_hash + driver_sha + source_data_hash).encode()).hexdigest()
+    current_completed = sum(candidate_hash(p) in completed_keys for p in plans)
     summary = {"contract": "amos.ae.autonomous-run.v1",
                "new_cycles": len(new_results), "total_completed": len(ledger["completed"]),
                "active_driver_completed": active_completed,
-               "waiting_for_new_hypothesis": active_completed >= len(plans),
+               "current_plan_completed": current_completed,
+               "waiting_for_new_hypothesis": current_completed == len(plans),
                "registry_size": len(plans),
                "research_only": True, "llm_hypothesis_generation_verified": False,
                "ledger_path": str(ledger_path),
