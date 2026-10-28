@@ -87,9 +87,9 @@ def heuristic(completed, already, n):
 
 def nim_propose(completed, already, n):
     token = os.getenv("NVIDIA_NIM_API_KEY") or os.getenv("NVIDIA_API_KEY", "")
-    model = os.getenv("NVIDIA_NIM_MODEL", "")
-    if not token or not model:
-        return None, "not_configured"
+    model = os.getenv("NVIDIA_NIM_MODEL") or "meta/llama-3.1-8b-instruct"
+    if not token:
+        return None, "credential_not_configured"
     summaries = [{"plan": x.get("plan"), "kpis": x.get("kpis"),
                   "native_fills": x.get("native_fills"), "verdict": x.get("verdict")}
                  for x in completed[-25:] if valid(x.get("plan"))]
