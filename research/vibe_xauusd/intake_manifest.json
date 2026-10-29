@@ -1,0 +1,27 @@
+{
+  "schema": "amos.vibe.intake.v1",
+  "status": "STAGED_NOT_DEPLOYED",
+  "source": {
+    "provider": "google_drive",
+    "file_id": "1HY3-1htL8rdWaHC_xSiZjPg6Ap6AEknQ",
+    "name": "XAUUSD_Vibe_Trading_Complete_Package.zip",
+    "size_bytes": 31191962,
+    "sha256": "56bf3bcfc3221b6cccd9cd64c03425952ebc98baf510e39058b65372772bdf38"
+  },
+  "code_repository": {
+    "proposed": "AMOS-Quant-Research/amos-vibe-trading",
+    "created": false
+  },
+  "research_only": true,
+  "live_trading": false,
+  "continuous_loop_verified": false,
+  "backtest_verified": false,
+  "archive_members": 3437,
+  "raw_bidask_quote_tick_parquet_count": 1,
+  "claimed_but_absent_evidence": [
+    "Vibe-Trading/.work/rawtick-e2e/run_card.md",
+    "Vibe-Trading/.work/rawtick-e2e/artifacts/nautilus_rawtick_evidence.json",
+    "Vibe-Trading/.work/rawtick-e2e/artifacts/metrics.csv"
+  ],
+  "next_gate": "SOURCE_PROVENANCE_AND_NATIVE_FILL_EVIDENCE"
+}

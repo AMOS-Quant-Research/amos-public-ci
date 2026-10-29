@@ -1,0 +1,10 @@
+{
+  "status": "CALIBRATED_FROM_BROKER_LOGS",
+  "symbol": "XAUUSD",
+  "sample_size": 100,
+  "commission_per_lot_usd": 0.0,
+  "slippage_probability": 0.0,
+  "margin_rate": 0.005,
+  "max_leverage": 2000,
+  "notes": "Replace every numeric value from the broker/MT5 order ledger. This template is not a tradable profile."
+}
