@@ -169,7 +169,12 @@ def propose(ledger_path, registry_path, output_path, count):
               "Do not repeat existing plans. Historical Native BT: " +
               json.dumps([{"plan": r.get("plan"), "kpis": r.get("kpis")} for r in completed[-25:]], allow_nan=False)[:6500] +
               " Existing: " + json.dumps(list(map(key, already))[-120:]))
-    model, status = propose_free(prompt, count, valid, key, already)
+    # NVIDIA is the primary research provider; fallback is explicitly tracked.
+    nim_model, nim_status = nim_propose(completed, already, count)
+    if nim_model:
+        model, status = nim_model, "nvidia_nim_validated_json"
+    else:
+        model, status = propose_free(prompt, count, valid, key, already)
     chosen = list(model or [])
     model_candidate_count = len(chosen)
     source = status.split("_validated_json")[0] if chosen else "metric_guided_deterministic"
@@ -184,7 +189,7 @@ def propose(ledger_path, registry_path, output_path, count):
               "llm_generated_candidate_count": model_candidate_count,
               "heuristic_generated_candidate_count": len(chosen) - model_candidate_count,
               "llm_hypothesis_generation_verified": model_candidate_count > 0,
-              "nim_status": "not_invoked", "ai_provider_status": status, "candidate_count": len(chosen),
+              "nim_status": nim_status, "ai_provider_status": status, "candidate_count": len(chosen),
               "historical_native_results": len(completed),
               "historical_feedback_used": bool(rank(completed)),
               "input_ledger_sha256": hashlib.sha256(ledger_path.read_bytes()).hexdigest() if ledger_path.exists() else None,
