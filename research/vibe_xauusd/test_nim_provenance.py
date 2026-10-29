@@ -3,6 +3,7 @@ import os
 from io import BytesIO
 from pathlib import Path
 import tempfile
+import urllib.error
 import unittest
 from unittest.mock import patch
 from ai_hypothesis_generator import CONTRACT, nim_propose, propose
@@ -38,6 +39,17 @@ class NIMProvenanceTests(unittest.TestCase):
             self.assertEqual(report["llm_generated_candidate_count"], 1)
             self.assertEqual(report["nim_status"], "nim_validated_json")
             self.assertEqual(json.loads((root / "output.json").read_text())["candidates"], [candidate])
+
+    def test_http_failure_is_classified_without_response_body(self):
+        exc = urllib.error.HTTPError(
+            "https://integrate.api.nvidia.com/v1/chat/completions", 404,
+            "model unavailable", {}, None)
+        with patch.dict(os.environ, {"NVIDIA_NIM_API_KEY": "dummy_test_only",
+                                     "NVIDIA_API_KEY": "", "AMOS_RESEARCH_GATEWAY_URL": ""}):
+            with patch("ai_hypothesis_generator.urllib.request.urlopen", side_effect=exc):
+                candidates, status = nim_propose([], [], 1)
+        self.assertIsNone(candidates)
+        self.assertEqual(status, "nim_http_404")
 
     def test_fallback_cannot_claim_llm(self):
         with tempfile.TemporaryDirectory() as td:
