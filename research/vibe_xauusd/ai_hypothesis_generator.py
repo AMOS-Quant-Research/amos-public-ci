@@ -184,7 +184,7 @@ def propose(ledger_path, registry_path, output_path, count):
               "llm_generated_candidate_count": model_candidate_count,
               "heuristic_generated_candidate_count": len(chosen) - model_candidate_count,
               "llm_hypothesis_generation_verified": model_candidate_count > 0,
-              "nim_status": "disabled_quota_exhausted", "ai_provider_status": status, "candidate_count": len(chosen),
+              "nim_status": "not_invoked", "ai_provider_status": status, "candidate_count": len(chosen),
               "historical_native_results": len(completed),
               "historical_feedback_used": bool(rank(completed)),
               "input_ledger_sha256": hashlib.sha256(ledger_path.read_bytes()).hexdigest() if ledger_path.exists() else None,
