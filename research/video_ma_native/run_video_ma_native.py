@@ -6,6 +6,8 @@ from pathlib import Path
 import subprocess
 import sys
 
+SHARED_RESEARCH = Path(__file__).resolve().parents[1] / "vibe_xauusd"
+sys.path.insert(0, str(SHARED_RESEARCH))
 from run_ae_watch_native import validate_archive, extract_native
 from patch_native_fractional_sizing import patch
 
