@@ -88,6 +88,33 @@ def heuristic(completed, already, n):
 def nim_propose(completed, already, n):
     token = os.getenv("NVIDIA_NIM_API_KEY") or os.getenv("NVIDIA_API_KEY", "")
     model = os.getenv("NVIDIA_NIM_MODEL") or "nvidia/nemotron-3-super-120b-a12b"
+    gateway = os.getenv("AMOS_RESEARCH_GATEWAY_URL", "").rstrip("/")
+    gateway_token = os.getenv("AMOS_RESEARCH_GATEWAY_TOKEN", "")
+    if gateway and gateway_token:
+        if not gateway.startswith("https://") or "/api/research/hypotheses" not in gateway:
+            return None, "gateway_url_invalid"
+        summary = [{"plan": x.get("plan"), "kpis": x.get("kpis"), "native_fills": x.get("native_fills")}
+                   for x in completed[-25:] if valid(x.get("plan"))]
+        context = json.dumps({"past": summary, "existing": list(map(key, already))[-120:]}, allow_nan=False)[:9000]
+        req = urllib.request.Request(gateway, method="POST",
+            data=json.dumps({"count": n, "context": context}).encode(),
+            headers={"Authorization": "Bearer " + gateway_token, "Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(req, timeout=35) as resp:
+                obj = json.load(resp)
+            content = obj["content"].strip()
+            if content.startswith("```"):
+                content = content.split("\\n", 1)[1].rsplit("```", 1)[0].strip()
+            candidates = json.loads(content)["candidates"]
+            seen = set(map(key, already))
+            accepted = []
+            for p in candidates:
+                if valid(p) and key(p) not in seen:
+                    accepted.append(p)
+                    seen.add(key(p))
+            return (accepted[:n], "nim_validated_json") if accepted else (None, "gateway_invalid_candidates")
+        except (ValueError, KeyError, IndexError, OSError, TypeError):
+            return None, "gateway_request_or_schema_failed"
     if not token:
         return None, "credential_not_configured"
     summaries = [{"plan": x.get("plan"), "kpis": x.get("kpis"),
