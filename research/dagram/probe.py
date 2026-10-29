@@ -1,4 +1,5 @@
 import asyncio, json, os, re, hashlib
+from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlparse
 from playwright.async_api import async_playwright
@@ -9,7 +10,7 @@ HOST="www.dagrammasterclass.com"
 def safe_event(event):
     # Whitelist schema/market fields only; do not persist raw frames or secrets.
     raw=event.get("data","")
-    out={"event":str(event.get("eventName",""))[:50],"bytes":len(raw)}
+    out={"event":str(event.get("eventName",""))[:50],"bytes":len(raw),"observed_at":datetime.now(timezone.utc).isoformat()}
     try:
         payload=json.loads(raw)
         if isinstance(payload,dict):
@@ -22,7 +23,7 @@ def safe_event(event):
                     item={"tf":str(tf)[:20],"revision":pub.get("revision"),"plan_present":isinstance(plan,dict),"keys":sorted(str(k)[:40] for k in pub.keys())[:20]}
                     if isinstance(plan,dict):
                         item["plan_keys"]=sorted(str(k)[:40] for k in plan.keys())[:30]
-                        for k in ("side","issuedAt","at","entry","sl","tp"):
+                        for k in ("side","issuedAt","at","time","id","phase","zone","entry","sl","tp"):
                             v=plan.get(k)
                             if isinstance(v,(str,int,float)) and len(str(v))<80: item[k]=v
                     out["publications"].append(item)
@@ -32,7 +33,7 @@ def safe_event(event):
                 out["publication"]={"tf":payload.get("tf"),"revision":pub.get("revision"),"plan_present":isinstance(plan,dict)}
                 if isinstance(plan,dict):
                     out["publication"]["plan_keys"]=sorted(str(k)[:40] for k in plan.keys())[:30]
-                    for k in ("side","issuedAt","at","entry","sl","tp"):
+                    for k in ("side","issuedAt","at","time","id","phase","zone","entry","sl","tp"):
                         v=plan.get(k)
                         if isinstance(v,(str,int,float)) and len(str(v))<80: out["publication"][k]=v
             candidates=[payload]+[payload[k] for k in ("publication","plan","data","payload","signal") if isinstance(payload.get(k),dict)]
@@ -67,7 +68,7 @@ async def main():
         try:
             response=await page.goto(TARGET,wait_until="domcontentloaded",timeout=45000)
             status=response.status if response else None
-            await page.wait_for_timeout(25000)
+            await page.wait_for_timeout(int(os.environ.get("AMOS_DAGRAM_OBSERVE_MS","60000")))
             await page.screenshot(path=str(OUT/"screenshot.png"),full_page=True)
             for i,url in enumerate(sorted(set([e["url"] for e in events if e["url"].endswith(".js") and e["url"].startswith("https://www.dagrammasterclass.com/")]))):
                 if urlparse(url).hostname != HOST: continue
