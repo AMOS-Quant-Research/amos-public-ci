@@ -18,13 +18,19 @@ jobs:
           python-version: '3.11'
       - run: pip install playwright==1.56.0 pandas==2.2.3
       - run: python -m playwright install --with-deps chromium
-      - run: PYTHONPATH=. python -m unittest research.dagram.test_vibe_signal_bridge research.dagram.test_public_observation research.dagram.test_match_raw_ticks research.dagram.test_real_bt_gate -v
+      - run: PYTHONPATH=. python -m unittest research.dagram.test_vibe_signal_bridge research.dagram.test_public_observation research.dagram.test_match_raw_ticks research.dagram.test_real_bt_gate research.dagram.test_fetch_matching_raw_ticks -v
       - run: python research/dagram/probe.py
       - name: Record public snapshot observation times (research only)
         if: always()
         run: |
           if [ -f artifacts/dagram/summary.json ]; then
             python research/dagram/public_observation.py artifacts/dagram/summary.json --captured-at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --output artifacts/dagram/observations.jsonl
+          fi
+      - name: Fetch contemporaneous historical Bid/Ask ticks only when new pub observed
+        if: always()
+        run: |
+          if [ -f artifacts/dagram/observations.jsonl ]; then
+            python research/dagram/fetch_matching_raw_ticks.py --observations artifacts/dagram/observations.jsonl --output artifacts/dagram/matching_ticks
           fi
       - name: Assess real-signal profitability eligibility against verified bundled QuoteTick period
         if: always()
