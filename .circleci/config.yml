@@ -1,0 +1,31 @@
+version: 2.1
+# Free CircleCI fallback. Does not use GitHub Actions or GitHub-hosted CI minutes.
+# Requires an existing CircleCI project connected to this repository and
+# NVIDIA_NIM_API_KEY set in CircleCI project environment/context.
+jobs:
+  nim-connectivity:
+    docker:
+      - image: cimg/python:3.12
+    resource_class: small
+    steps:
+      - checkout
+      - run:
+          name: Verify NIM credential visibility without printing secrets
+          command: |
+            if [ -z "${NVIDIA_NIM_API_KEY:-}" ]; then
+              echo "BLOCKED_CIRCLECI_NIM_SECRET_NOT_CONFIGURED"
+              exit 2
+            fi
+      - run:
+          name: One NVIDIA NIM inference using existing AMOS script
+          no_output_timeout: 2m
+          command: |
+            python scripts/nim_connectivity.py
+workflows:
+  research-nim:
+    jobs:
+      - nim-connectivity:
+          filters:
+            branches:
+              only:
+                - research/amos-ai-trader-clean-20261029
