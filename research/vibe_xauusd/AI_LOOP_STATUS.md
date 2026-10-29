@@ -20,3 +20,12 @@
 6. Use a minimal standalone reviewed workflow on default branch for scheduled research only after review; retain LIVE OFF.
 
 No paid service enabled; no broker orders; no main merge.
+
+
+## Verified existing Worker route (source inspection)
+- Existing implementation: `Sai310421/MQL5_Project/telegram-command-center/src/worker.js` on main.
+- `POST /api/ai` exists but **requires Telegram Mini App initData authorization**; it is NOT a service-to-service API for GitHub Actions.
+- `GET /health` only returns a static service status; it does NOT call NVIDIA NIM. Worker deployment/health success cannot prove current NIM inference.
+- `askAI` does call NVIDIA NIM using `NVIDIA_NIM_API_KEY` and defaults to `nvidia/nemotron-3-super-120b-a12b`, but returns human-readable error strings for HTTP failures and missing key. The existing `/api/ai` output is conversational text, not validated research candidate JSON.
+- Therefore do NOT point the Native BT job at `/health`, and do NOT attempt to bypass Telegram authentication to call `/api/ai`. The research loop needs either an authorized machine-to-machine route with its own narrowly scoped credential or the same NIM credential scoped to its repository; neither route is currently demonstrated end-to-end.
+- Prior NIM probe workflow failure in `amos-public-ci` is not evidence that the deployed Worker is down.
