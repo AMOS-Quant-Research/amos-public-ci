@@ -1,0 +1,20 @@
+name: AMOS AI Trader research stages 1-6
+on:
+  push:
+    branches: [research/amos-ai-trader-stages-1-6-20261029]
+    paths:
+      - 'research/ai_trader/**'
+      - '.github/workflows/amos-ai-trader-research.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  research-unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Research-only unit tests (no synthetic profit claims)
+        run: python -m unittest discover -s research/ai_trader -p 'test_*.py' -v
