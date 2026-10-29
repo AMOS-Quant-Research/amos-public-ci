@@ -5,19 +5,20 @@ bar is consumed by the Nautilus strategy on the subsequent raw QuoteTick.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 
 
-@dataclass(frozen=True)
 class Spec:
-    timeframe: str
-    fast: int = 44
-    slow: int = 332
-    atr_period: int = 14
-    atr_multiple: float = 2.0
-    use_atr_trail: bool = False
+    def __init__(self, timeframe: str, fast: int = 44, slow: int = 332,
+                 atr_period: int = 14, atr_multiple: float = 2.0,
+                 use_atr_trail: bool = False):
+        self.timeframe = timeframe
+        self.fast = fast
+        self.slow = slow
+        self.atr_period = atr_period
+        self.atr_multiple = atr_multiple
+        self.use_atr_trail = use_atr_trail
 
 
 VIDEO_M5 = Spec(timeframe="5min")
