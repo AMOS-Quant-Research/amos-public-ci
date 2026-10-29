@@ -1,0 +1,41 @@
+# PR synchronization trigger for the requested native MA comparison.
+name: Vibe XAUUSD Native AE Watch Research
+on:
+  push:
+    branches: ['research/video-ma-m1-atrtrail-20261030']
+    paths:
+      - 'research/video_ma_native/**'
+      - '.github/workflows/vibe-xauusd-native-research.yml'
+  pull_request:
+    paths:
+      - 'research/video_ma_native/**'
+      - '.github/workflows/vibe-xauusd-native-research.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  video-ma-native-comparison:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install 'nautilus_trader==1.230.0' numpy pandas pyarrow gdown
+      - run: python -m unittest discover -s research/video_ma_native -p 'test_*.py' -v
+      - run: |
+          python -m gdown 'https://drive.google.com/uc?id=1HY3-1htL8rdWaHC_xSiZjPg6Ap6AEknQ' -O /tmp/vibe-original.zip
+          echo '56bf3bcfc3221b6cccd9cd64c03425952ebc98baf510e39058b65372772bdf38  /tmp/vibe-original.zip' | sha256sum -c -
+      - run: python research/video_ma_native/run_video_ma_native.py --archive /tmp/vibe-original.zip --output /tmp/video_ma
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: video-ma-native-evidence
+          path: |
+            /tmp/video_ma/ma_comparison.json
+            /tmp/video_ma/runs/**/run_card.json
+            /tmp/video_ma/runs/**/artifacts/*.json
+            /tmp/video_ma/runs/**/artifacts/*.log
+          retention-days: 7
+          if-no-files-found: warn

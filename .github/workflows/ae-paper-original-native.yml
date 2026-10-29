@@ -1,0 +1,43 @@
+name: AE Paper Original Native Backtest
+on:
+  pull_request:
+    paths:
+      - 'research/vibe_xauusd/ae_original_kelly.py'
+      - 'research/vibe_xauusd/patch_native_fractional_sizing.py'
+      - 'research/vibe_xauusd/run_ae_original_native.py'
+      - 'research/vibe_xauusd/test_ae_original_kelly.py'
+      - '.github/workflows/ae-paper-original-native.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native-paper:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install research-only dependencies
+        run: python -m pip install 'nautilus_trader==1.230.0' numpy pandas pyarrow gdown
+      - name: Test original mathematical constraint
+        run: python -m unittest discover -s research/vibe_xauusd -p 'test_ae_original_kelly.py' -v
+      - name: Fetch exact verified Raw Bid Ask source
+        run: |
+          python -m gdown 'https://drive.google.com/uc?id=1HY3-1htL8rdWaHC_xSiZjPg6Ap6AEknQ' -O /tmp/vibe-original.zip
+          echo '56bf3bcfc3221b6cccd9cd64c03425952ebc98baf510e39058b65372772bdf38  /tmp/vibe-original.zip' | sha256sum -c -
+      - name: Run baseline and original Kelly moment on native Nautilus
+        run: python research/vibe_xauusd/run_ae_original_native.py --archive /tmp/vibe-original.zip --output /tmp/ae_paper
+      - name: Upload reproducible paper evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ae-paper-original-native-evidence
+          path: |
+            /tmp/ae_paper/paper_batch_result.json
+            /tmp/ae_paper/runs/**/run_card.json
+            /tmp/ae_paper/runs/**/artifacts/*.json
+            /tmp/ae_paper/runs/**/artifacts/*.log
+          retention-days: 7
+          if-no-files-found: warn
