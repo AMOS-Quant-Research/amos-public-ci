@@ -36,6 +36,7 @@ class NIMProvenanceTests(unittest.TestCase):
         self.assertFalse(report["llm_hypothesis_generation_verified"])
         self.assertEqual(report["llm_generated_candidate_count"], 0)
         self.assertEqual(report["heuristic_generated_candidate_count"], 2)
+        self.assertEqual(report["nim_status"], "not_invoked")
 
 
 if __name__ == "__main__":
