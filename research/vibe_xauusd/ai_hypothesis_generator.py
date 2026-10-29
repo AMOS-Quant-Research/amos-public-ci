@@ -12,7 +12,6 @@ import math
 import os
 from pathlib import Path
 import random
-import urllib.request
 from free_ai_adapter import propose_free
 
 HERE = Path(__file__).resolve().parent
