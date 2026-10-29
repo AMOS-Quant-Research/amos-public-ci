@@ -1,6 +1,11 @@
 # PR synchronization trigger for the requested native MA comparison.
 name: Vibe XAUUSD Native AE Watch Research
 on:
+  push:
+    branches: ['research/video-ma-m1-atrtrail-20261030']
+    paths:
+      - 'research/video_ma_native/**'
+      - '.github/workflows/vibe-xauusd-native-research.yml'
   pull_request:
     paths:
       - 'research/video_ma_native/**'
