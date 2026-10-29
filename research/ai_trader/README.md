@@ -9,3 +9,12 @@ Source UI: user-provided Russell2000_Indicators_Fixed.zip; UI contains **synthet
 6. CoreAI: JSON research intake envelope. Actual CoreAI endpoint, transport, ACK, Risk Governor integration unverified. Every envelope has NOT_DELIVERED and DENIED.
 Example: `python -m research.ai_trader.engine --quotes actual_quotes.csv --output research_intake.json`.
 This only works with **real** properly timestamped quote CSV. Do not feed the UI synthetic data.
+
+## Implemented adapters (2026-10-29)
+- `catalog_adapter.py`: loads existing Nautilus `ParquetDataCatalog` XAUUSD.SIM QuoteTicks, verifies timestamps and spread, exports CSV and SHA256 provenance. Requires a real catalog and Nautilus installed.
+- `nim_candidate.py`: optional NVIDIA NIM request with strict parameter allowlist; fails closed if secret is absent. NIM connectivity not yet successful.
+- `pipeline.py`: chains real catalog export -> validated NIM parameters (optional) -> completed M1 bar decision -> CoreAI research intake JSON. It does **not** call Native BT or transmit to CoreAI.
+- `python -m research.ai_trader.pipeline --catalog /actual/catalog/path --output /tmp/amos-ai-trader`
+- Add `--use-nim` only with a working `NVIDIA_NIM_API_KEY`.
+- `--native-evidence` accepts research evidence metadata, but does not cryptographically verify fills or substitute for an actual native backtest. Do not interpret a READY flag as validated edge or delivery.
+- CI only runs deterministic unit tests. No real catalog path, CoreAI endpoint or API credential is available in this workflow.
