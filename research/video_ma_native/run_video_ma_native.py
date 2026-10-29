@@ -68,6 +68,12 @@ def run(archive: str, output: str) -> int:
             result.update({"status": "MEASURED", "raw_ticks": evidence["raw_ticks"],
                            "native_closed_positions": evidence["native_fills"], "kpis": evidence["kpis"],
                            "diagnostics": evidence["diagnostics"], "cost_model": evidence["cost_model"]})
+            if evidence["diagnostics"]["fills_report_rows"] < 1:
+                result["status"] = "NO_NATIVE_FILLS"
+                result["invalid_reason"] = (
+                    "This catalog cannot produce a comparison: neither variant generated a native fill. "
+                    "For VIDEO_M5_SMA44_332, require at least 333 completed M5 bars plus a prior trading day."
+                )
         else:
             result["error_tail"] = (proc.stderr or proc.stdout)[-1600:]
         (root / "run_card.json").write_text(json.dumps(result, indent=2, allow_nan=False), encoding="utf-8")
