@@ -211,7 +211,7 @@ def main() -> None:
     pnls = np.array([float(str(v).split()[0]) for v in report.get("realized_pnl", [])], dtype=float) if report is not None else np.array([])
     evidence = {"contract": "amos.vibe.measured-evidence.v1", "live_trading": False,
                 "engine": "NautilusTrader BacktestEngine", "ohlc_resample_used": False,
-                "raw_ticks": len(raw_ticks), "native_fills": int(len(pnls)), "kpis": _metric(pnls),
+                "raw_ticks": len(raw_ticks), "native_fills": 0 if fills_report is None else int(len(fills_report)), "kpis": _metric(pnls),
                 "diagnostics": {"signal_minutes": len(signals), "internal_bars": strategy.bar_events,
                                 "matched_signal_bars": strategy.matched_signals, "orders_submitted": strategy.entries,
                                 "synthetic_l1_size_replacements": l1_replacements,
