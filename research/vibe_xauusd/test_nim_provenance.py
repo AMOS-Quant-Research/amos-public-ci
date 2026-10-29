@@ -25,6 +25,20 @@ class NIMProvenanceTests(unittest.TestCase):
         self.assertEqual(status, "nim_validated_json")
         self.assertEqual(candidates, [{"lambda": 1.75, "momentum": 7, "lookback": 110}])
 
+    def test_nim_proposal_flows_to_registry(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            reg = root / "registry.json"
+            reg.write_text(json.dumps({"contract": CONTRACT, "candidates": []}))
+            candidate = {"lambda": 1.75, "momentum": 7, "lookback": 110}
+            with patch("ai_hypothesis_generator.nim_propose", return_value=([candidate], "nim_validated_json")) as nim:
+                report = propose(root / "missing-ledger.json", reg, root / "output.json", 1)
+            nim.assert_called_once()
+            self.assertEqual(report["generator"], "nvidia_nim")
+            self.assertEqual(report["llm_generated_candidate_count"], 1)
+            self.assertEqual(report["nim_status"], "nim_validated_json")
+            self.assertEqual(json.loads((root / "output.json").read_text())["candidates"], [candidate])
+
     def test_fallback_cannot_claim_llm(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
@@ -36,7 +50,7 @@ class NIMProvenanceTests(unittest.TestCase):
         self.assertFalse(report["llm_hypothesis_generation_verified"])
         self.assertEqual(report["llm_generated_candidate_count"], 0)
         self.assertEqual(report["heuristic_generated_candidate_count"], 2)
-        self.assertEqual(report["nim_status"], "not_invoked")
+        self.assertEqual(report["nim_status"], "credential_not_configured")
 
 
 if __name__ == "__main__":
