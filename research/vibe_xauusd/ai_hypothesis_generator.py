@@ -13,6 +13,7 @@ import os
 from pathlib import Path
 import random
 import urllib.request
+from free_ai_adapter import propose_free
 
 HERE = Path(__file__).resolve().parent
 CONTRACT = "amos.ae.candidate-registry.v1"
@@ -163,10 +164,15 @@ def propose(ledger_path, registry_path, output_path, count):
     completed = load_ledger(ledger_path)
     registry = existing_registry(registry_path)
     already = [x["plan"] for x in completed if valid(x.get("plan"))] + registry
-    model, status = nim_propose(completed, already, count)
+    prompt = ("Research-only. Return JSON object with candidates list of " + str(count) +
+              " objects with lambda float [0.1,5], momentum integer [2,30], lookback integer [30,500]. " +
+              "Do not repeat existing plans. Historical Native BT: " +
+              json.dumps([{"plan": r.get("plan"), "kpis": r.get("kpis")} for r in completed[-25:]], allow_nan=False)[:6500] +
+              " Existing: " + json.dumps(list(map(key, already))[-120:]))
+    model, status = propose_free(prompt, count, valid, key, already)
     chosen = list(model or [])
     model_candidate_count = len(chosen)
-    source = "nvidia_nim_validated" if chosen else "metric_guided_deterministic"
+    source = status.split("_validated_json")[0] if chosen else "metric_guided_deterministic"
     if len(chosen) < count:
         chosen += heuristic(completed, already + chosen, count - len(chosen))
     if len(chosen) != count:
@@ -178,7 +184,7 @@ def propose(ledger_path, registry_path, output_path, count):
               "llm_generated_candidate_count": model_candidate_count,
               "heuristic_generated_candidate_count": len(chosen) - model_candidate_count,
               "llm_hypothesis_generation_verified": model_candidate_count > 0,
-              "nim_status": status, "candidate_count": len(chosen),
+              "nim_status": "disabled_quota_exhausted", "ai_provider_status": status, "candidate_count": len(chosen),
               "historical_native_results": len(completed),
               "historical_feedback_used": bool(rank(completed)),
               "input_ledger_sha256": hashlib.sha256(ledger_path.read_bytes()).hexdigest() if ledger_path.exists() else None,
