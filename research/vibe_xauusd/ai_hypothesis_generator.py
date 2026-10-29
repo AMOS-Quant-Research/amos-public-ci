@@ -13,6 +13,7 @@ import os
 from pathlib import Path
 import random
 import urllib.request
+import urllib.error
 from free_ai_adapter import propose_free
 
 HERE = Path(__file__).resolve().parent
@@ -154,8 +155,13 @@ def nim_propose(completed, already, n):
                 seen.add(key(p))
                 result.append(p)
         return (result[:n], "nim_validated_json") if result else (None, "invalid_or_duplicate_model_output")
-    except (ValueError, KeyError, IndexError, OSError, TypeError):
-        return None, "nim_request_or_schema_failed"
+    except urllib.error.HTTPError as exc:
+        # Preserve actionable HTTP class without logging tokens or response bodies.
+        return None, "nim_http_" + str(exc.code)
+    except (ValueError, KeyError, IndexError, TypeError):
+        return None, "nim_invalid_response_schema"
+    except OSError:
+        return None, "nim_transport_failed"
 
 
 def propose(ledger_path, registry_path, output_path, count):
