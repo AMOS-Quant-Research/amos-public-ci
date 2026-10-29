@@ -28,7 +28,7 @@ def normalize_public_events(summary, captured_at, output):
             if not isinstance(pub, dict):
                 continue
             side = pub.get("side")
-            if side not in ("LONG", "SHORT"):
+            if side not in ("LONG", "SHORT", "BUY", "SELL"):
                 continue
             # hello is a historical snapshot. pub is an observed update,
             # but its network receipt is NOT a verified server issuance time.
@@ -44,7 +44,7 @@ def normalize_public_events(summary, captured_at, output):
                 "revision": pub.get("revision"),
                 "plan_id": pub.get("id"),
                 "phase": pub.get("phase"),
-                "side": side,
+                "side": {"BUY": "LONG", "SELL": "SHORT"}.get(side, side),\n                "raw_side": side,
                 "entry": pub.get("entry"),
                 "sl": pub.get("sl"),
                 "tp": pub.get("tp"),
