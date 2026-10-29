@@ -15,8 +15,8 @@ def extract(archive,target):
     target=Path(target).resolve()
     catalog=target/PREFIX.rstrip("/")
     with zipfile.ZipFile(archive) as z:
-        members=[x for x in z.infolist() if x.filename.startswith(PREFIX) and x.filename.endswith(".parquet")]
-        if not members:
+        members=[x for x in z.infolist() if x.filename.startswith(PREFIX) and not x.is_dir()]
+        if not any(x.filename.endswith(".parquet") for x in members):
             raise ValueError("no real XAUUSD parquet catalog in pinned archive")
         for item in members:
             path=(target/item.filename).resolve()
