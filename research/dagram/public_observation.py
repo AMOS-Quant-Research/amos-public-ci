@@ -17,20 +17,33 @@ def normalize_public_events(summary, captured_at, output):
         raise ValueError("timezone-aware captured_at required")
     rows = []
     for index, event in enumerate(summary.get("sse_events", [])):
-        for pub in event.get("publications", []):
+        event_at = event.get("observed_at", captured_at)
+        observed = datetime.fromisoformat(str(event_at).replace("Z", "+00:00"))
+        if observed.tzinfo is None:
+            raise ValueError("SSE observed_at must have timezone")
+        publications = list(event.get("publications", []))
+        if isinstance(event.get("publication"), dict):
+            publications.append(event["publication"])
+        for pub in publications:
             if not isinstance(pub, dict):
                 continue
             side = pub.get("side")
             if side not in ("LONG", "SHORT"):
                 continue
+            # hello is a historical snapshot. pub is an observed update,
+            # but its network receipt is NOT a verified server issuance time.
+            event_type = event.get("event")
+            first_seen_update = event_type == "pub"
             rows.append({
-                "schema": "amos.dagram.observation.v2",
-                "source": "public_sse_snapshot",
+                "schema": "amos.dagram.observation.v3",
+                "source": "public_sse_update" if first_seen_update else "public_sse_snapshot",
                 "event_index": index,
-                "event_type": event.get("event"),
-                "observed_at": captured.astimezone(timezone.utc).isoformat(),
+                "event_type": event_type,
+                "observed_at": observed.astimezone(timezone.utc).isoformat(),
                 "timeframe": pub.get("tf"),
                 "revision": pub.get("revision"),
+                "plan_id": pub.get("id"),
+                "phase": pub.get("phase"),
                 "side": side,
                 "entry": pub.get("entry"),
                 "sl": pub.get("sl"),
@@ -38,7 +51,9 @@ def normalize_public_events(summary, captured_at, output):
                 "raw_time_field": pub.get("time"),
                 "issued_at": None,
                 "issued_at_verified": False,
+                "first_seen_update": first_seen_update,
                 "backtest_eligible": False,
+                "forward_observation_eligible": first_seen_update,
                 "live_trading": False,
             })
     path = Path(output)
