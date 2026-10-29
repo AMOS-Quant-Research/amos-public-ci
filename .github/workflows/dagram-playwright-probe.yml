@@ -18,7 +18,7 @@ jobs:
           python-version: '3.11'
       - run: pip install playwright==1.56.0 pandas==2.2.3
       - run: python -m playwright install --with-deps chromium
-      - run: PYTHONPATH=. python -m unittest research.dagram.test_vibe_signal_bridge research.dagram.test_public_observation research.dagram.test_match_raw_ticks research.dagram.test_real_bt_gate research.dagram.test_fetch_matching_raw_ticks -v
+      - run: PYTHONPATH=. python -m unittest research.dagram.test_vibe_signal_bridge research.dagram.test_public_observation research.dagram.test_match_raw_ticks research.dagram.test_real_bt_gate research.dagram.test_fetch_matching_raw_ticks research.financial_os.test_handoff -v
       - run: python research/dagram/probe.py
       - name: Record public snapshot observation times (research only)
         if: always()
