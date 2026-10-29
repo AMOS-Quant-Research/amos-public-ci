@@ -26,8 +26,8 @@ class ProofTests(unittest.TestCase):
         candidate = {"candidate_key": "mock-sha", "plan": plan, "returncode": 0,
                      "native_fills": 8, "live_trading": False}
         result = self.check(
-            {"contract": "amos.ae.proposal-evidence.v1", "generator": "nvidia_nim_validated",
-             "nim_status": "nim_validated_json", "llm_hypothesis_generation_verified": True,
+            {"contract": "amos.ae.proposal-evidence.v1", "generator": "openrouter_free",
+             "ai_provider_status": "openrouter_free_validated_json", "llm_hypothesis_generation_verified": True,
              "candidate_parameters": [plan], "llm_generated_candidate_count": 1},
             {"contract": "amos.ae.autonomous-ledger.v1", "completed": [candidate]},
             {"contract": "amos.ae.autonomous-run.v1", "new_results": [candidate]})
@@ -36,8 +36,8 @@ class ProofTests(unittest.TestCase):
     def test_no_fill_does_not_pass(self):
         plan = {"lambda": 1.25, "momentum": 6, "lookback": 90}
         result = self.check(
-            {"contract": "amos.ae.proposal-evidence.v1", "generator": "nvidia_nim_validated",
-             "nim_status": "nim_validated_json", "llm_hypothesis_generation_verified": True,
+            {"contract": "amos.ae.proposal-evidence.v1", "generator": "openrouter_free",
+             "ai_provider_status": "openrouter_free_validated_json", "llm_hypothesis_generation_verified": True,
              "candidate_parameters": [plan], "llm_generated_candidate_count": 1},
             {"contract": "amos.ae.autonomous-ledger.v1", "completed": []},
             {"contract": "amos.ae.autonomous-run.v1", "new_results": []})
