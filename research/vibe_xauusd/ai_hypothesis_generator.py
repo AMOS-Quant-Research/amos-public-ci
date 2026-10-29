@@ -1,6 +1,6 @@
 """AMOS closed-loop AE hypothesis proposer (research-only).
 
-LLM path: optional NVIDIA NIM chat-completions, JSON parameters only.
+LLM path: free-tier OpenRouter/Groq adapter, JSON parameters only.
 Without configured model/key, a deterministic metric-driven search proposes
 new, bounded hypotheses. Never execute generated Python or trading orders.
 Proposals are NOT paper discoveries or independently validated EDGE.
@@ -84,78 +84,6 @@ def heuristic(completed, already, n):
             seen.add(key(p))
             proposed.append(p)
     return proposed
-
-
-def nim_propose(completed, already, n):
-    token = os.getenv("NVIDIA_NIM_API_KEY") or os.getenv("NVIDIA_API_KEY", "")
-    model = os.getenv("NVIDIA_NIM_MODEL") or "nvidia/nemotron-3-super-120b-a12b"
-    gateway = os.getenv("AMOS_RESEARCH_GATEWAY_URL", "").rstrip("/")
-    gateway_token = os.getenv("AMOS_RESEARCH_GATEWAY_TOKEN", "")
-    if gateway and gateway_token:
-        if not gateway.startswith("https://") or "/api/research/hypotheses" not in gateway:
-            return None, "gateway_url_invalid"
-        summary = [{"plan": x.get("plan"), "kpis": x.get("kpis"), "native_fills": x.get("native_fills")}
-                   for x in completed[-25:] if valid(x.get("plan"))]
-        context = json.dumps({"past": summary, "existing": list(map(key, already))[-120:]}, allow_nan=False)[:9000]
-        req = urllib.request.Request(gateway, method="POST",
-            data=json.dumps({"count": n, "context": context}).encode(),
-            headers={"Authorization": "Bearer " + gateway_token, "Content-Type": "application/json"})
-        try:
-            with urllib.request.urlopen(req, timeout=35) as resp:
-                obj = json.load(resp)
-            content = obj["content"].strip()
-            if content.startswith("```"):
-                content = content.split("\\n", 1)[1].rsplit("```", 1)[0].strip()
-            candidates = json.loads(content)["candidates"]
-            seen = set(map(key, already))
-            accepted = []
-            for p in candidates:
-                if valid(p) and key(p) not in seen:
-                    accepted.append(p)
-                    seen.add(key(p))
-            return (accepted[:n], "nim_validated_json") if accepted else (None, "gateway_invalid_candidates")
-        except (ValueError, KeyError, IndexError, OSError, TypeError):
-            return None, "gateway_request_or_schema_failed"
-    if not token:
-        return None, "credential_not_configured"
-    summaries = [{"plan": x.get("plan"), "kpis": x.get("kpis"),
-                  "native_fills": x.get("native_fills"), "verdict": x.get("verdict")}
-                 for x in completed[-25:] if valid(x.get("plan"))]
-    prompt = ("Research-only parameter hypothesis generation. Original equation: maximize "
-              "E[log(1+fR)] subject to E[(1+fR)^(-lambda)] <= 1. "
-              "Do not invent a new paper, source, or performance. "
-              "Propose exactly " + str(n) + " novel parameter dictionaries as a JSON object "
-              '{"candidates":[{"lambda":1.25,"momentum":6,"lookback":90}]}. '
-              "Ranges: lambda numeric [0.1,5], momentum integer [2,30], "
-              "lookback integer [30,500]. Do not repeat tested or queued candidates. "
-              "Prior native outcomes (same uncalibrated costs/in-sample only): "
-              + json.dumps(summaries, allow_nan=False)[:6500]
-              + " Existing candidate keys: " + json.dumps(list(map(key, already))[-120:]))
-    body = {"model": model, "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.4, "max_tokens": 400}
-    req = urllib.request.Request(
-        "https://integrate.api.nvidia.com/v1/chat/completions",
-        data=json.dumps(body).encode(), method="POST",
-        headers={"Authorization": "Bearer " + token,
-                 "Content-Type": "application/json"})
-    try:
-        with urllib.request.urlopen(req, timeout=25) as resp:
-            obj = json.load(resp)
-        content = obj["choices"][0]["message"]["content"].strip()
-        if content.startswith("```"):
-            content = content.split("\n", 1)[1].rsplit("```", 1)[0].strip()
-        proposals = json.loads(content)["candidates"]
-        if not isinstance(proposals, list):
-            return None, "invalid_model_output"
-        seen = set(map(key, already))
-        result = []
-        for p in proposals:
-            if valid(p) and key(p) not in seen:
-                seen.add(key(p))
-                result.append(p)
-        return (result[:n], "nim_validated_json") if result else (None, "invalid_or_duplicate_model_output")
-    except (ValueError, KeyError, IndexError, OSError, TypeError):
-        return None, "nim_request_or_schema_failed"
 
 
 def propose(ledger_path, registry_path, output_path, count):
