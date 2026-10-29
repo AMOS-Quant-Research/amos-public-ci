@@ -1,3 +1,4 @@
+# PR synchronization trigger for the requested native MA comparison.
 name: Vibe XAUUSD Native AE Watch Research
 on:
   pull_request:
