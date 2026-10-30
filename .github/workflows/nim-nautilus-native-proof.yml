@@ -1,0 +1,54 @@
+name: NVIDIA to Nautilus native proof
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/nim-nautilus-native-proof.yml'
+permissions:
+  contents: read
+jobs:
+  native-proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      NVIDIA_NIM_API_KEY: ${{ secrets.NVIDIA_NIM_API_KEY }}
+      NVIDIA_NIM_MODEL: nvidia/nemotron-3.5-bolt-e4b
+      PYTHONPATH: .
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate native research contracts
+        run: python -m unittest discover -s research/ai_trader -p 'test_*.py' -v
+      - name: Check NVIDIA credentials without disclosure
+        run: |
+          if [ -z "${NVIDIA_NIM_API_KEY:-}" ]; then
+            echo "BLOCKED_NVIDIA_NIM_API_KEY_MISSING"
+            exit 2
+          fi
+      - name: Install native engine and catalog tools
+        run: python -m pip install 'nautilus_trader==1.230.0' pandas numpy pyarrow gdown
+      - name: Download pinned real XAUUSD QuoteTick archive
+        run: |
+          mkdir -p "$RUNNER_TEMP/amos"
+          python -m gdown 'https://drive.google.com/uc?id=1HY3-1htL8rdWaHC_xSiZjPg6Ap6AEknQ' -O "$RUNNER_TEMP/amos/original.zip"
+          python -m research.ai_trader.archive_catalog --archive "$RUNNER_TEMP/amos/original.zip" --target "$RUNNER_TEMP/amos/source" --manifest "$RUNNER_TEMP/amos/catalog_manifest.json"
+      - name: Generate NVIDIA candidate and execute Nautilus native BT
+        timeout-minutes: 25
+        run: |
+          python -m research.ai_trader.native_run --catalog "$RUNNER_TEMP/amos/source/xauusd-data/.work/vibe-math-xauusd-20260727" --output "$RUNNER_TEMP/amos/result" --nim 2>&1 | tee "$RUNNER_TEMP/amos/native-proof.log"
+          test -s "$RUNNER_TEMP/amos/result/native_research_result.json"
+      - name: Preserve evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nim-nautilus-native-proof-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/amos/catalog_manifest.json
+            ${{ runner.temp }}/amos/native-proof.log
+            ${{ runner.temp }}/amos/result/native_research_result.json
+            ${{ runner.temp }}/amos/result/native_run/artifacts/
+          if-no-files-found: warn
+          retention-days: 14
