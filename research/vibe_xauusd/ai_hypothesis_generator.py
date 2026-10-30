@@ -89,7 +89,7 @@ def heuristic(completed, already, n):
 
 def nim_propose(completed, already, n):
     token = os.getenv("NVIDIA_NIM_API_KEY") or os.getenv("NVIDIA_API_KEY", "")
-    model = os.getenv("NVIDIA_NIM_MODEL") or "nvidia/nemotron-3-super-120b-a12b"
+    model = os.getenv("NVIDIA_NIM_MODEL") or os.getenv("NIM_MODEL") or "nvidia/nemotron-3.5-bolt-e4b"
     gateway = os.getenv("AMOS_RESEARCH_GATEWAY_URL", "").rstrip("/")
     gateway_token = os.getenv("AMOS_RESEARCH_GATEWAY_TOKEN", "")
     if gateway and gateway_token:
