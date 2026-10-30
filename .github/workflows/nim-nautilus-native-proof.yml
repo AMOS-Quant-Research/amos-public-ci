@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/nim-nautilus-native-proof.yml'
+      - 'research/ai_trader/nim_candidate.py'
 permissions:
   contents: read
 jobs:
