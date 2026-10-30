@@ -1,0 +1,33 @@
+name: AMOS Potential Analyzer preflight
+on:
+  push:
+    paths:
+      - 'research/potential/**'
+      - 'research/README.md'
+      - 'research/BOUNDARY.md'
+      - '.github/workflows/potential-preflight.yml'
+  pull_request:
+    paths:
+      - 'research/potential/**'
+      - 'research/README.md'
+      - 'research/BOUNDARY.md'
+      - '.github/workflows/potential-preflight.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  potential:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unit tests
+        run: python -m unittest discover -s research/potential -p 'test_*.py' -v
+      - name: Example preflight
+        run: python -m research.potential.analyzer --input research/potential/example_input.json --output potential_result.json
+      - name: Preserve preflight JSON
+        uses: actions/upload-artifact@v4
+        with:
+          name: potential-preflight-${{ github.run_id }}
+          path: potential_result.json
+          retention-days: 14
