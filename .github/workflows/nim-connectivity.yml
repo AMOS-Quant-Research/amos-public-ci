@@ -20,7 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Validate probe syntax without secrets
-        run: python3 -m py_compile scripts/nim_connectivity.py
+        run: python3 -m py_compile scripts/nim_client.py scripts/nim_connectivity.py
       - name: Explain deferred live test
         run: echo 'NIM_LIVE_TEST_DEFERRED: PR validation does not access credentials'
   verify-nim:
