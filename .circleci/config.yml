@@ -50,4 +50,4 @@ workflows:
       - nvidia-to-nautilus:
           filters:
             branches:
-              only: research/amos-native-circleci-fallback-20261030
+              only: main
