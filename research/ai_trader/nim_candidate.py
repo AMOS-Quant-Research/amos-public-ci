@@ -34,7 +34,7 @@ def generate(request_fn=None):
     request=urllib.request.Request("https://integrate.api.nvidia.com/v1/chat/completions",
         data=json.dumps(body).encode(),method="POST",
         headers={"Authorization":"Bearer "+token,"Content-Type":"application/json"})
-    with (request_fn or urllib.request.urlopen)(request,timeout=45) as response:
+    with (request_fn or urllib.request.urlopen)(request,timeout=150) as response:
         raw=json.load(response)
     content=raw["choices"][0]["message"]["content"].strip()
     if content.startswith("```"):
