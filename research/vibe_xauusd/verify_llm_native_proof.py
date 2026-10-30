@@ -20,23 +20,29 @@ def verify(proposal_path, ledger_path, summary_path):
     if s.get("contract") != "amos.ae.autonomous-run.v1":
         raise ValueError("bad native summary contract")
     if not p.get("llm_hypothesis_generation_verified"):
-        return {"verdict": "BLOCKED", "reason": p.get("ai_provider_status", "LLM_NOT_VERIFIED"),
+        # Preserve the failed NVIDIA attempt in evidence even when fallback
+        # providers are unavailable. No credentials or response bodies logged.
+        return {"verdict": "BLOCKED",
+                "reason": p.get("nim_status", "not_invoked") + ";" +
+                          p.get("ai_provider_status", "LLM_NOT_VERIFIED"),
                 "llm_generated": 0, "native_proof": False}
     provider = p.get("generator")
-    if provider not in ("openrouter_free", "groq_free") or p.get("ai_provider_status") != provider + "_validated_json":
-        raise ValueError("LLM evidence contradicts claimed free-provider success")
+    if provider not in ("nvidia_nim", "openrouter_free", "groq_free") or p.get("ai_provider_status") != provider + "_validated_json":
+        raise ValueError("LLM evidence contradicts claimed provider success")
+    if provider == "nvidia_nim" and p.get("nim_status") != "nim_validated_json":
+        raise ValueError("NVIDIA provenance contradicts successful proposal")
     candidates = p.get("candidate_parameters", [])[:p.get("llm_generated_candidate_count", 0)]
     new_results = s.get("new_results", [])
     matched = [r for r in new_results if r.get("plan") in candidates
                and r.get("returncode") == 0 and r.get("native_fills", 0) >= 1
                and r.get("live_trading") is False and r.get("candidate_key")]
     if not matched:
-        return {"verdict": "BLOCKED", "reason": "FREE_AI_CANDIDATE_HAS_NO_NATIVE_FILL",
+        return {"verdict": "BLOCKED", "reason": "LLM_CANDIDATE_HAS_NO_NATIVE_FILL",
                 "llm_generated": len(candidates), "native_proof": False}
     ledger_keys = {r.get("candidate_key") for r in l.get("completed", [])}
     if any(r["candidate_key"] not in ledger_keys for r in matched):
         raise ValueError("Native run not persisted in checkpoint")
-    return {"verdict": "PASS", "reason": "FREE_AI_TO_NATIVE_LEDGER",
+    return {"verdict": "PASS", "reason": "LLM_TO_NATIVE_LEDGER",
             "llm_generated": len(candidates), "native_proof": True,
             "matched_candidate_keys": [r["candidate_key"] for r in matched]}
 

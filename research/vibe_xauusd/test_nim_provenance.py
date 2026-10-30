@@ -3,6 +3,7 @@ import os
 from io import BytesIO
 from pathlib import Path
 import tempfile
+import urllib.error
 import unittest
 from unittest.mock import patch
 from ai_hypothesis_generator import CONTRACT, nim_propose, propose
@@ -25,6 +26,31 @@ class NIMProvenanceTests(unittest.TestCase):
         self.assertEqual(status, "nim_validated_json")
         self.assertEqual(candidates, [{"lambda": 1.75, "momentum": 7, "lookback": 110}])
 
+    def test_nim_proposal_flows_to_registry(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            reg = root / "registry.json"
+            reg.write_text(json.dumps({"contract": CONTRACT, "candidates": []}))
+            candidate = {"lambda": 1.75, "momentum": 7, "lookback": 110}
+            with patch("ai_hypothesis_generator.nim_propose", return_value=([candidate], "nim_validated_json")) as nim:
+                report = propose(root / "missing-ledger.json", reg, root / "output.json", 1)
+            nim.assert_called_once()
+            self.assertEqual(report["generator"], "nvidia_nim")
+            self.assertEqual(report["llm_generated_candidate_count"], 1)
+            self.assertEqual(report["nim_status"], "nim_validated_json")
+            self.assertEqual(json.loads((root / "output.json").read_text())["candidates"], [candidate])
+
+    def test_http_failure_is_classified_without_response_body(self):
+        exc = urllib.error.HTTPError(
+            "https://integrate.api.nvidia.com/v1/chat/completions", 404,
+            "model unavailable", {}, None)
+        with patch.dict(os.environ, {"NVIDIA_NIM_API_KEY": "dummy_test_only",
+                                     "NVIDIA_API_KEY": "", "AMOS_RESEARCH_GATEWAY_URL": ""}):
+            with patch("ai_hypothesis_generator.urllib.request.urlopen", side_effect=exc):
+                candidates, status = nim_propose([], [], 1)
+        self.assertIsNone(candidates)
+        self.assertEqual(status, "nim_http_404")
+
     def test_fallback_cannot_claim_llm(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
@@ -36,7 +62,7 @@ class NIMProvenanceTests(unittest.TestCase):
         self.assertFalse(report["llm_hypothesis_generation_verified"])
         self.assertEqual(report["llm_generated_candidate_count"], 0)
         self.assertEqual(report["heuristic_generated_candidate_count"], 2)
-        self.assertEqual(report["nim_status"], "not_invoked")
+        self.assertEqual(report["nim_status"], "credential_not_configured")
 
 
 if __name__ == "__main__":

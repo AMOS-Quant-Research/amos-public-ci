@@ -13,6 +13,7 @@ import os
 from pathlib import Path
 import random
 import urllib.request
+import urllib.error
 from free_ai_adapter import propose_free
 
 HERE = Path(__file__).resolve().parent
@@ -88,7 +89,7 @@ def heuristic(completed, already, n):
 
 def nim_propose(completed, already, n):
     token = os.getenv("NVIDIA_NIM_API_KEY") or os.getenv("NVIDIA_API_KEY", "")
-    model = os.getenv("NVIDIA_NIM_MODEL") or "nvidia/nemotron-3-super-120b-a12b"
+    model = os.getenv("NVIDIA_NIM_MODEL") or os.getenv("NIM_MODEL") or "nvidia/nemotron-3.5-bolt-e4b"
     gateway = os.getenv("AMOS_RESEARCH_GATEWAY_URL", "").rstrip("/")
     gateway_token = os.getenv("AMOS_RESEARCH_GATEWAY_TOKEN", "")
     if gateway and gateway_token:
@@ -154,8 +155,13 @@ def nim_propose(completed, already, n):
                 seen.add(key(p))
                 result.append(p)
         return (result[:n], "nim_validated_json") if result else (None, "invalid_or_duplicate_model_output")
-    except (ValueError, KeyError, IndexError, OSError, TypeError):
-        return None, "nim_request_or_schema_failed"
+    except urllib.error.HTTPError as exc:
+        # Preserve actionable HTTP class without logging tokens or response bodies.
+        return None, "nim_http_" + str(exc.code)
+    except (ValueError, KeyError, IndexError, TypeError):
+        return None, "nim_invalid_response_schema"
+    except OSError:
+        return None, "nim_transport_failed"
 
 
 def propose(ledger_path, registry_path, output_path, count):
@@ -169,7 +175,12 @@ def propose(ledger_path, registry_path, output_path, count):
               "Do not repeat existing plans. Historical Native BT: " +
               json.dumps([{"plan": r.get("plan"), "kpis": r.get("kpis")} for r in completed[-25:]], allow_nan=False)[:6500] +
               " Existing: " + json.dumps(list(map(key, already))[-120:]))
-    model, status = propose_free(prompt, count, valid, key, already)
+    # NVIDIA is the primary research provider; fallback is explicitly tracked.
+    nim_model, nim_status = nim_propose(completed, already, count)
+    if nim_model:
+        model, status = nim_model, "nvidia_nim_validated_json"
+    else:
+        model, status = propose_free(prompt, count, valid, key, already)
     chosen = list(model or [])
     model_candidate_count = len(chosen)
     source = status.split("_validated_json")[0] if chosen else "metric_guided_deterministic"
@@ -184,7 +195,7 @@ def propose(ledger_path, registry_path, output_path, count):
               "llm_generated_candidate_count": model_candidate_count,
               "heuristic_generated_candidate_count": len(chosen) - model_candidate_count,
               "llm_hypothesis_generation_verified": model_candidate_count > 0,
-              "nim_status": "not_invoked", "ai_provider_status": status, "candidate_count": len(chosen),
+              "nim_status": nim_status, "ai_provider_status": status, "candidate_count": len(chosen),
               "historical_native_results": len(completed),
               "historical_feedback_used": bool(rank(completed)),
               "input_ledger_sha256": hashlib.sha256(ledger_path.read_bytes()).hexdigest() if ledger_path.exists() else None,
