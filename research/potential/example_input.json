@@ -1,0 +1,37 @@
+{
+  "contract": "amos.potential.input.v1",
+  "sources": [
+    {
+      "id": "sweep_mss_m1",
+      "thesis": "Sweep and MSS continuation",
+      "mechanism": "liquidity displacement after stop run",
+      "market": "XAUUSD",
+      "timeframe": "M1",
+      "entry": "sweep then MSS",
+      "exit": "invalidation stop and RR target",
+      "execution": "market on bid/ask",
+      "data": {
+        "source": "Dukascopy QuoteTicks",
+        "bid_ask": true
+      },
+      "costs": {
+        "spread": "observed bid/ask",
+        "slippage": "scenario",
+        "commission": "broker schedule"
+      },
+      "risk": {
+        "max_loss": "0.5% equity",
+        "stop_rule": "below/above sweep"
+      },
+      "validation": {
+        "oos": "holdout",
+        "wfo": "rolling"
+      },
+      "signals": [
+        "sweep",
+        "MSS"
+      ]
+    }
+  ],
+  "confluences": []
+}
