@@ -8,6 +8,8 @@ jobs:
       - image: cimg/python:3.12
     resource_class: medium
     working_directory: ~/project
+    environment:
+      NVIDIA_NIM_MODEL: nvidia/nemotron-3.5-bolt-e4b
     steps:
       - checkout
       - run:
