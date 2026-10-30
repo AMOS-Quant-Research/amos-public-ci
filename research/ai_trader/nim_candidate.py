@@ -24,7 +24,7 @@ def generate(request_fn=None):
     token=os.environ.get("NVIDIA_NIM_API_KEY","").strip()
     if not token:
         raise RuntimeError("NIM_SECRET_MISSING")
-    model=os.environ.get("NVIDIA_NIM_MODEL","nvidia/nemotron-3-super-120b-a12b")
+    model=os.environ.get("NVIDIA_NIM_MODEL") or os.environ.get("NIM_MODEL") or "nvidia/nemotron-3.5-bolt-e4b"
     prompt=('Return ONLY JSON with keys period, rsi_long, rsi_short, max_spread_atr. '
             'Research-only XAUUSD M1 technical indicator parameters. '
             'period integer 5..100, rsi_long 50..80, rsi_short 20..50, '
