@@ -1,0 +1,48 @@
+name: TradeByData Overnight Drift Native Research
+
+on:
+  push:
+    branches: [research/tradebydata-overnight-drift-causal-20261030]
+    paths:
+      - "research/ai_trader/**"
+      - ".github/workflows/tradebydata-overnight-drift.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  raw-tick-native:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate deterministic research contracts
+        run: python -m unittest discover -s research/ai_trader -p "test_*.py" -v
+      - name: Install Nautilus native dependencies
+        run: python -m pip install "nautilus_trader==1.230.0" pandas numpy pyarrow gdown
+      - name: Retrieve pinned verified XAUUSD QuoteTick catalog
+        run: |
+          mkdir -p "$RUNNER_TEMP/amos-research"
+          python -m gdown "https://drive.google.com/uc?id=1HY3-1htL8rdWaHC_xSiZjPg6Ap6AEknQ" -O "$RUNNER_TEMP/amos-research/original.zip"
+          python -m research.ai_trader.archive_catalog \
+            --archive "$RUNNER_TEMP/amos-research/original.zip" \
+            --target "$RUNNER_TEMP/amos-research/source" \
+            --manifest "$RUNNER_TEMP/amos-research/catalog_manifest.json"
+      - name: Execute Overnight Drift on native QuoteTicks
+        run: |
+          python -m research.ai_trader.tradebydata_native_run \
+            --catalog "$RUNNER_TEMP/amos-research/source/xauusd-data/.work/vibe-math-xauusd-20260727" \
+            --output "$RUNNER_TEMP/amos-research/overnight-drift"
+      - name: Upload measured research evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: overnight-drift-native-evidence
+          path: |
+            ${{ runner.temp }}/amos-research/overnight-drift/
+            ${{ runner.temp }}/amos-research/catalog_manifest.json
+          if-no-files-found: warn
