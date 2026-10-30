@@ -1,0 +1,53 @@
+version: 2.1
+# Independent CircleCI Free fallback. Does not invoke GitHub Actions.
+# Requires this repository to be connected as a CircleCI project.
+# NVIDIA_NIM_API_KEY must be configured in CircleCI, never committed.
+jobs:
+  nvidia-to-nautilus:
+    docker:
+      - image: cimg/python:3.12
+    resource_class: medium
+    working_directory: ~/project
+    steps:
+      - checkout
+      - run:
+          name: Test AMOS research contracts offline
+          command: python -m unittest discover -s research/ai_trader -p 'test_*.py' -v
+      - run:
+          name: Verify NVIDIA key visibility (no key output)
+          command: |
+            if [ -z "${NVIDIA_NIM_API_KEY:-}" ]; then
+              echo "BLOCKED_CIRCLECI_NIM_SECRET_NOT_CONFIGURED"
+              exit 2
+            fi
+      - run:
+          name: Install existing Nautilus native research dependencies
+          command: python -m pip install 'nautilus_trader==1.230.0' pandas numpy pyarrow gdown
+      - run:
+          name: Download previously verified real XAUUSD Bid Ask archive
+          no_output_timeout: 8m
+          command: |
+            mkdir -p /tmp/amos-research
+            python -m gdown 'https://drive.google.com/uc?id=1HY3-1htL8rdWaHC_xSiZjPg6Ap6AEknQ' -O /tmp/amos-research/original.zip
+            python -m research.ai_trader.archive_catalog --archive /tmp/amos-research/original.zip --target /tmp/amos-research/source --manifest /tmp/amos-research/catalog_manifest.json
+      - run:
+          name: NVIDIA candidate to Nautilus native XAUUSD QuoteTick BT
+          no_output_timeout: 20m
+          command: |
+            python -m research.ai_trader.native_run \
+              --catalog /tmp/amos-research/source/xauusd-data/.work/vibe-math-xauusd-20260727 \
+              --output /tmp/amos-research/result \
+              --nim
+      - store_artifacts:
+          path: /tmp/amos-research/result
+          destination: native-research-evidence
+      - store_artifacts:
+          path: /tmp/amos-research/catalog_manifest.json
+          destination: catalog-manifest.json
+workflows:
+  nim-native-research:
+    jobs:
+      - nvidia-to-nautilus:
+          filters:
+            branches:
+              only: research/amos-native-circleci-fallback-20261030
