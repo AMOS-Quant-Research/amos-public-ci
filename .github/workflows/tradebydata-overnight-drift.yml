@@ -6,6 +6,11 @@ on:
     paths:
       - "research/ai_trader/**"
       - ".github/workflows/tradebydata-overnight-drift.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/ai_trader/**"
+      - ".github/workflows/tradebydata-overnight-drift.yml"
   workflow_dispatch:
 
 permissions:
