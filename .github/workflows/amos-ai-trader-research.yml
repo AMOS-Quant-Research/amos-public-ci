@@ -1,7 +1,7 @@
 name: AMOS AI Trader research stages 1-6
 on:
   push:
-    branches: [research/amos-ai-trader-clean-20261029]
+    branches: [main]
     paths:
       - 'research/ai_trader/**'
       - '.github/workflows/amos-ai-trader-research.yml'
