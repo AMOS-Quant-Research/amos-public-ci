@@ -50,12 +50,12 @@ def _bars(ticks: list[QuoteTick]) -> pd.DataFrame:
     rows = [(pd.Timestamp(int(t.ts_event), unit="ns", tz="UTC"), _f(t.bid_price), _f(t.ask_price)) for t in ticks]
     frame = pd.DataFrame(rows, columns=["timestamp", "bid", "ask"]).set_index("timestamp")
     mid = (frame["bid"] + frame["ask"]) / 2
-    # Nautilus INTERNAL bars carry the event minute, not a synthetic next-bar
-    # label. Keep the signal index at that same minute so a decision made from
-    # completed raw ticks is submitted on the following quote.
-    out = mid.resample("1min", label="left", closed="left").ohlc().dropna()
-    out["bid"] = frame["bid"].resample("1min", label="left", closed="left").last().reindex(out.index)
-    out["ask"] = frame["ask"].resample("1min", label="left", closed="left").last().reindex(out.index)
+    # Native INTERNAL bars default to timestamps at their close.  Label each
+    # series at that same close (e.g. 10:01 contains only (10:00, 10:01]) so
+    # on_bar can never select a signal built with later quotes.
+    out = mid.resample("1min", label="right", closed="right").ohlc().dropna()
+    out["bid"] = frame["bid"].resample("1min", label="right", closed="right").last().reindex(out.index)
+    out["ask"] = frame["ask"].resample("1min", label="right", closed="right").last().reindex(out.index)
     out["volume"] = 1.0
     return out
 
