@@ -2,7 +2,8 @@
 import os
 import sys
 
-from scripts import nim_client
+# Executed as `python scripts/nim_connectivity.py`; this directory is on sys.path.
+import nim_client
 
 def main():
     if not os.getenv("NVIDIA_NIM_API_KEY", "").strip():
