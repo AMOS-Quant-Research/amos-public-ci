@@ -1,0 +1,327 @@
+{
+  "contract": "amos.ae.math-edge-dictionary.v1",
+  "generated_utc_date": "2026-11-04",
+  "scope": "Research-only consolidated index of verified AMOS Issue intakes; not a deployable strategy registry.",
+  "canonical_intake": "GitHub Issues in AMOS-Quant-Research/amos-public-ci",
+  "execution_registry": "research/vibe_xauusd/ae_candidate_registry.json (separate PR #46 branch; Kelly parameters only)",
+  "governance": {
+    "live_trading": false,
+    "main_modified": false,
+    "auto_merge": false,
+    "existing_risk_governor_authority": "unchanged",
+    "original_vs_derived": "Never relabel AE composition or Kelly retuning as a source theorem",
+    "promotion_requirements": [
+      "Exact source provenance and ORIGINAL unit tests",
+      "AE_DERIVED module and assumptions separately tested",
+      "Immutable Raw Bid/Ask catalog and source/data/driver SHA",
+      "Native Nautilus fills >=1 and finite PF/EV/DD with evidence",
+      "OOS/WFO/MC and broker-calibrated costs",
+      "Reviewed scoped PR; no auto-merge"
+    ],
+    "duplicate_key": "paper.arxiv + source formula/implementation hash + input data SHA; no repeat on unchanged sample"
+  },
+  "baseline": {
+    "pr": 46,
+    "branch": "research/vibe-xauusd-package-intake-20261028",
+    "native_engine": "NautilusTrader==1.230.0 (existing branch declaration; not retested for this dictionary)",
+    "known_data_limitations": [
+      "Approximately one day / 208501 Dukascopy XAUUSD Bid/Ask QuoteTicks in prior research",
+      "Synthetic executable L1 size",
+      "Zero commission and slippage",
+      "No multi-regime OOS or realistic impact calibration"
+    ],
+    "unattended_cron": "BLOCKED_DEFAULT_BRANCH until reviewed workflow merge; not active",
+    "new_native_runs_for_dictionary": 0
+  },
+  "records": [
+    {
+      "id": "AE-MATH-0049",
+      "issue": 49,
+      "title": "Ratcheting/reset dividend control",
+      "category": [
+        "singular_control",
+        "impulse_control",
+        "optimal_stopping",
+        "capital_extraction"
+      ],
+      "paper": {
+        "arxiv": "2610.34348",
+        "url": "https://arxiv.org/abs/2610.34348",
+        "type": "preprint"
+      },
+      "original": {
+        "model": "dX_t=mu*X_t*dt+sigma*X_t*dW_t-C_t*dt-dP_t; min(rho*V-L*V-c^p/p, -V_c, V-J[V], V-lambda*x^p/p)=0",
+        "novelty": "Mixed singular/impulse/stopping ratcheting and reset with payout-rate bands; underlying methods are preexisting."
+      },
+      "ae_derived": {
+        "mapping": "Research-only capital-extraction and reserve-reset controller; account equity is a proposed proxy for firm equity, not a source theorem.",
+        "failure_modes": [
+          "Need actual withdrawal/equity history and reset friction",
+          "FX margin calls/jumps not captured by source diffusion"
+        ]
+      },
+      "blockers": [
+        "BLOCKED_INPUTS",
+        "NO_NATIVE_TEST"
+      ],
+      "status": "HOLD",
+      "next_gate": "Obtain multi-period account equity, withdrawals, financing and costs; verify ORIGINAL operator and boundaries before AE proxy testing.",
+      "issue_url": "https://github.com/AMOS-Quant-Research/amos-public-ci/issues/49",
+      "source_class": "ORIGINAL_AND_AE_DERIVED_SEPARATE",
+      "evidence": {
+        "original_source_from_issue": true,
+        "source_math_independently_reproduced": false,
+        "ae_strategy_implemented": false,
+        "native_run_id": null,
+        "native_fill_count": null,
+        "pf": null,
+        "ev": null,
+        "max_dd": null,
+        "oos_verified": false,
+        "cost_calibrated": false,
+        "decision": "HOLD"
+      }
+    },
+    {
+      "id": "AE-MATH-0057",
+      "issue": 57,
+      "title": "Wiener-Hopf causal trading filter",
+      "category": [
+        "execution",
+        "transaction_cost",
+        "signal_filter"
+      ],
+      "paper": {
+        "arxiv": "2610.24558",
+        "url": "https://arxiv.org/abs/2610.24558",
+        "type": "preprint"
+      },
+      "original": {
+        "model": "pi*=F_+^(-1) P F_-^(-1) alpha; f_hat(omega)=lambda+(beta^2+omega^2)*g_hat(omega)",
+        "novelty": "Causal forecast-to-position optimizer with transient market-friction kernel; Wiener-Hopf factorization itself is foundational."
+      },
+      "ae_derived": {
+        "mapping": "Shadow-only forecast-to-target-position filter upstream of the existing Risk Governor; source's beta>0 special case is NOT directly applicable to ordinary spot holding.",
+        "failure_modes": [
+          "Need measured impact kernel and execution costs",
+          "One-day QuoteTicks cannot identify order-book impact",
+          "Stationarity, jumps and spot beta=0 require new derivation"
+        ]
+      },
+      "blockers": [
+        "BLOCKED_INPUTS",
+        "NO_NATIVE_TEST"
+      ],
+      "status": "HOLD",
+      "next_gate": "Calibrate causal impact/cost kernel from independent data and prove valid beta=0 formulation before native A/B.",
+      "issue_url": "https://github.com/AMOS-Quant-Research/amos-public-ci/issues/57",
+      "source_class": "ORIGINAL_AND_AE_DERIVED_SEPARATE",
+      "evidence": {
+        "original_source_from_issue": true,
+        "source_math_independently_reproduced": false,
+        "ae_strategy_implemented": false,
+        "native_run_id": null,
+        "native_fill_count": null,
+        "pf": null,
+        "ev": null,
+        "max_dd": null,
+        "oos_verified": false,
+        "cost_calibrated": false,
+        "decision": "HOLD"
+      }
+    },
+    {
+      "id": "AE-MATH-0061",
+      "issue": 61,
+      "title": "Regime-switching equilibrium dividend barrier",
+      "category": [
+        "regime_switching",
+        "singular_control",
+        "ruin",
+        "capital_extraction"
+      ],
+      "paper": {
+        "arxiv": "2610.19655",
+        "url": "https://arxiv.org/abs/2610.19655",
+        "type": "preprint"
+      },
+      "original": {
+        "model": "beta(s)=theta*exp(-delta1*s)+(1-theta)*exp(-delta2*s); max((L V)_i+partial_s f_i(x,0),1-V_i'(x))=0",
+        "novelty": "Equilibrium dividend barriers with Markov regime switching, bankruptcy and non-exponential discounting."
+      },
+      "ae_derived": {
+        "mapping": "Regime-dependent withdrawal thresholds on free surplus above ring-fenced reserves; NOT a direct FX entry signal.",
+        "failure_modes": [
+          "Needs observable regimes and account cashflow histories",
+          "Regime-transition estimates and time-inconsistent preference weights not identified",
+          "Forced liquidation and price jumps violate diffusion assumptions"
+        ]
+      },
+      "blockers": [
+        "BLOCKED_INPUTS",
+        "NO_NATIVE_TEST"
+      ],
+      "status": "HOLD",
+      "next_gate": "Validate coupled ODE/free-boundary ORIGINAL separately; collect multi-regime equity, cashflow, margin and financing evidence.",
+      "issue_url": "https://github.com/AMOS-Quant-Research/amos-public-ci/issues/61",
+      "source_class": "ORIGINAL_AND_AE_DERIVED_SEPARATE",
+      "evidence": {
+        "original_source_from_issue": true,
+        "source_math_independently_reproduced": false,
+        "ae_strategy_implemented": false,
+        "native_run_id": null,
+        "native_fill_count": null,
+        "pf": null,
+        "ev": null,
+        "max_dd": null,
+        "oos_verified": false,
+        "cost_calibrated": false,
+        "decision": "HOLD"
+      }
+    },
+    {
+      "id": "AE-MATH-0062",
+      "issue": 62,
+      "title": "Regime-weighted conformal VaR calibration",
+      "category": [
+        "conformal",
+        "tail_risk",
+        "risk_governor"
+      ],
+      "paper": {
+        "arxiv": "2602.03903",
+        "url": "https://arxiv.org/abs/2602.03903",
+        "type": "preprint"
+      },
+      "original": {
+        "model": "w_i(t)=exp(-lambda*(t-i))*exp(-||z_i-z_t||^2/(2*h^2)); U_t=qhat_t+WeightedQuantile_rho({y_i-qhat_i},wtilde_i); n_eff=1/sum(wtilde_i^2)",
+        "novelty": "Sequential regime-weighted one-sided VaR calibration; conformal methods predate this work."
+      },
+      "ae_derived": {
+        "mapping": "SHADOW-only loss-quantile pre-gate, Risk Governor remains authoritative; calibration coverage is NOT evidence of trading profitability.",
+        "failure_modes": [
+          "Finite-sample validity under arbitrary nonstationarity is not guaranteed",
+          "Regime-feature lookahead and low effective sample size",
+          "One-day data cannot validate multi-regime tail coverage"
+        ]
+      },
+      "blockers": [
+        "BLOCKED_INPUTS",
+        "NO_NATIVE_TEST"
+      ],
+      "status": "HOLD",
+      "next_gate": "Obtain multi-regime OOS; test exact weighted quantile, ESS fallback, Kupiec/Christoffersen exceedance and cost-aware DD.",
+      "issue_url": "https://github.com/AMOS-Quant-Research/amos-public-ci/issues/62",
+      "source_class": "ORIGINAL_AND_AE_DERIVED_SEPARATE",
+      "evidence": {
+        "original_source_from_issue": true,
+        "source_math_independently_reproduced": false,
+        "ae_strategy_implemented": false,
+        "native_run_id": null,
+        "native_fill_count": null,
+        "pf": null,
+        "ev": null,
+        "max_dd": null,
+        "oos_verified": false,
+        "cost_calibrated": false,
+        "decision": "HOLD"
+      }
+    },
+    {
+      "id": "AE-MATH-0064",
+      "issue": 64,
+      "title": "Queue-sensitive passive market impact",
+      "category": [
+        "order_book",
+        "hawkes",
+        "execution"
+      ],
+      "paper": {
+        "arxiv": "2610.38442",
+        "url": "https://arxiv.org/abs/2610.38442",
+        "type": "preprint"
+      },
+      "original": {
+        "model": "P_t=P_0+kappa_bar*integral_0^t xi(t-s)dD_s+R_t; queue-affine correction includes H_t+J_t (J_t is an anticipation term, not zero by assumption)",
+        "novelty": "Queue-state passive liquidity correction and calibration on ES futures order-book messages; Hawkes/propagators are preexisting."
+      },
+      "ae_derived": {
+        "mapping": "Candidate shadow market-impact estimator only after licensed exchange order-book events and execution calibration; not derivable from XAUUSD L1 quotes alone.",
+        "failure_modes": [
+          "No real LOB messages or cancellations in existing QuoteTick catalog",
+          "Unobserved anticipation term J_t",
+          "ES venue model may not transfer to OTC XAUUSD"
+        ]
+      },
+      "blockers": [
+        "BLOCKED_LOB_INPUTS",
+        "NO_NATIVE_TEST"
+      ],
+      "status": "HOLD",
+      "next_gate": "Secure licensed LOB event data, identify J treatment, measure OOS predictive gain and real broker costs.",
+      "issue_url": "https://github.com/AMOS-Quant-Research/amos-public-ci/issues/64",
+      "source_class": "ORIGINAL_AND_AE_DERIVED_SEPARATE",
+      "evidence": {
+        "original_source_from_issue": true,
+        "source_math_independently_reproduced": false,
+        "ae_strategy_implemented": false,
+        "native_run_id": null,
+        "native_fill_count": null,
+        "pf": null,
+        "ev": null,
+        "max_dd": null,
+        "oos_verified": false,
+        "cost_calibrated": false,
+        "decision": "HOLD"
+      }
+    },
+    {
+      "id": "AE-MATH-0065",
+      "issue": 65,
+      "title": "Finite-action diffusion control / action screening",
+      "category": [
+        "finite_action",
+        "hjb",
+        "lot_sizing"
+      ],
+      "paper": {
+        "arxiv": "2610.37344",
+        "url": "https://arxiv.org/abs/2610.37344",
+        "type": "preprint"
+      },
+      "original": {
+        "model": "partial_tau v=min_i(-beta_i(tau)*v_x+(a_i(tau)/2)*v_xx); finite action i in {1,...,N}",
+        "novelty": "Under restrictive convexity/terminal-shape conditions, lower convex hull screens actions and yields ordered feedback thresholds."
+      },
+      "ae_derived": {
+        "mapping": "Research-only discrete lot/risk-action selector for a one-dimensional equity-buffer state, compared with rounded continuous sizing; NOT an exact theorem once switching costs are added.",
+        "failure_modes": [
+          "Terminal-shape, convexity and uniform ellipticity assumptions may fail",
+          "Nonzero position switching costs require a different control model",
+          "FX jumps, nonlinear margin and multivariate risk invalidate direct theorem transfer"
+        ]
+      },
+      "blockers": [
+        "HOLD_MODEL_MAPPING",
+        "NO_NATIVE_TEST"
+      ],
+      "status": "HOLD",
+      "next_gate": "Prove finite-action theorem assumptions and independent Bellman numerical test; add switching-cost state if needed.",
+      "issue_url": "https://github.com/AMOS-Quant-Research/amos-public-ci/issues/65",
+      "source_class": "ORIGINAL_AND_AE_DERIVED_SEPARATE",
+      "evidence": {
+        "original_source_from_issue": true,
+        "source_math_independently_reproduced": false,
+        "ae_strategy_implemented": false,
+        "native_run_id": null,
+        "native_fill_count": null,
+        "pf": null,
+        "ev": null,
+        "max_dd": null,
+        "oos_verified": false,
+        "cost_calibrated": false,
+        "decision": "HOLD"
+      }
+    }
+  ]
+}
