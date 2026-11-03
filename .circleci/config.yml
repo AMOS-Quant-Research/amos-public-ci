@@ -44,6 +44,39 @@ jobs:
       - store_artifacts:
           path: /tmp/amos-research/catalog_manifest.json
           destination: catalog-manifest.json
+  overnight-drift-native:
+    docker:
+      - image: cimg/python:3.12
+    resource_class: medium
+    working_directory: ~/project
+    steps:
+      - checkout
+      - run:
+          name: Test research contracts offline
+          command: python -m unittest discover -s research/ai_trader -p 'test_*.py' -v
+      - run:
+          name: Install Nautilus native research dependencies
+          command: python -m pip install 'nautilus_trader==1.230.0' pandas numpy pyarrow gdown
+      - run:
+          name: Download verified real XAUUSD Bid Ask archive
+          no_output_timeout: 8m
+          command: |
+            mkdir -p /tmp/amos-research
+            python -m gdown 'https://drive.google.com/uc?id=1HY3-1htL8rdWaHC_xSiZjPg6Ap6AEknQ' -O /tmp/amos-research/original.zip
+            python -m research.ai_trader.archive_catalog --archive /tmp/amos-research/original.zip --target /tmp/amos-research/source --manifest /tmp/amos-research/catalog_manifest.json
+      - run:
+          name: Independent Overnight Drift on Nautilus QuoteTicks
+          no_output_timeout: 20m
+          command: |
+            python -m research.ai_trader.tradebydata_native_run \
+              --catalog /tmp/amos-research/source/xauusd-data/.work/vibe-math-xauusd-20260727 \
+              --output /tmp/amos-research/overnight-drift
+      - store_artifacts:
+          path: /tmp/amos-research/overnight-drift
+          destination: overnight-drift-native-evidence
+      - store_artifacts:
+          path: /tmp/amos-research/catalog_manifest.json
+          destination: catalog-manifest.json
 workflows:
   nim-native-research:
     jobs:
@@ -51,3 +84,9 @@ workflows:
           filters:
             branches:
               only: main
+  overnight-drift-native-research:
+    jobs:
+      - overnight-drift-native:
+          filters:
+            branches:
+              only: research/tradebydata-overnight-drift-causal-20261030
