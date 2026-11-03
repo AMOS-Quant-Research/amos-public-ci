@@ -1,0 +1,47 @@
+name: Dagram public Playwright probe
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'research/dagram/**'
+      - '.github/workflows/dagram-playwright-probe.yml'
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install playwright==1.56.0 pandas==2.2.3
+      - run: python -m playwright install --with-deps chromium
+      - run: PYTHONPATH=. python -m unittest research.dagram.test_vibe_signal_bridge research.dagram.test_public_observation research.dagram.test_match_raw_ticks research.dagram.test_real_bt_gate research.dagram.test_fetch_matching_raw_ticks research.financial_os.test_handoff research.financial_os.test_coreai_intake -v
+      - run: python research/dagram/probe.py
+      - name: Record public snapshot observation times (research only)
+        if: always()
+        run: |
+          if [ -f artifacts/dagram/summary.json ]; then
+            python research/dagram/public_observation.py artifacts/dagram/summary.json --captured-at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --output artifacts/dagram/observations.jsonl
+          fi
+      - name: Fetch contemporaneous historical Bid/Ask ticks only when new pub observed
+        if: always()
+        run: |
+          if [ -f artifacts/dagram/observations.jsonl ]; then
+            python research/dagram/fetch_matching_raw_ticks.py --observations artifacts/dagram/observations.jsonl --output artifacts/dagram/matching_ticks
+          fi
+      - name: Assess real-signal profitability eligibility against verified bundled QuoteTick period
+        if: always()
+        run: |
+          if [ -f artifacts/dagram/observations.jsonl ]; then
+            python research/dagram/real_bt_gate.py --observations artifacts/dagram/observations.jsonl --tick-start 2026-07-27T00:00:00.110Z --tick-end 2026-07-27T23:59:59.826Z --output artifacts/dagram/real_bt_eligibility.json
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dagram-public-probe
+          path: artifacts/dagram/
+          retention-days: 3
+
