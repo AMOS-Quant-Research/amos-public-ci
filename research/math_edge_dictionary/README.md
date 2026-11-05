@@ -7,11 +7,11 @@ This is the **consolidated, reviewable index** for Math EDGE research intake. It
 | Layer | Source of truth | Meaning |
 | --- | --- | --- |
 | Literature / provenance | [AMOS GitHub Issues](https://github.com/AMOS-Quant-Research/amos-public-ci/issues?q=is%3Aissue+%22Math+EDGE%22) | Paper title, exact ORIGINAL math, assumptions, AE_DERIVED idea and blockers |
-| Consolidated research index | [dictionary.json](./dictionary.json) | Machine-readable snapshot of **six** confirmed Issues (#49, #57, #61, #62, #64, #65) |
+| Consolidated research index | [dictionary.json](./dictionary.json) | Machine-readable snapshot of **seven** confirmed Issues (#49, #57, #61, #62, #64, #65, #69) |
 | Vibe execution candidate registry | `research/vibe_xauusd/ae_candidate_registry.json` on [PR #46](https://github.com/AMOS-Quant-Research/amos-public-ci/pull/46) | Separate Kelly parameter triples, **not** the Math EDGE Dictionary |
-| Evidence | Actual Native CI Run URL, immutable SHA and persisted results | Required for any tested/promoted status; none is claimed for the six paper methods here |
+| Evidence | Actual Native CI Run URL, immutable SHA and persisted results | Required for any tested/promoted status; none is claimed for the seven paper methods here |
 
-**Snapshot date:** 2026-11-04. This is a **manually curated snapshot**, not a live Issue synchronization or automated discovery service. Other historical proposals discussed outside these six verified Issues have **not** been silently imported.
+**Snapshot date:** 2026-11-05. This is a **manually curated snapshot**, not a live Issue synchronization or automated discovery service. Other historical proposals discussed outside these six verified Issues have **not** been silently imported.
 
 ## Research inventory
 
@@ -23,6 +23,7 @@ This is the **consolidated, reviewable index** for Math EDGE research intake. It
 | AE-MATH-0062 | [#62](https://github.com/AMOS-Quant-Research/amos-public-ci/issues/62) | Regime-weighted conformal VaR | HOLD | Multi-regime OOS tail-risk calibration |
 | AE-MATH-0064 | [#64](https://github.com/AMOS-Quant-Research/amos-public-ci/issues/64) | Queue-sensitive passive market impact | HOLD | Real LOB messages / anticipation term |
 | AE-MATH-0065 | [#65](https://github.com/AMOS-Quant-Research/amos-public-ci/issues/65) | Finite-action diffusion control | HOLD | Exact theorem-to-lot mapping |
+| AE-MATH-0069 | [#69](https://github.com/AMOS-Quant-Research/amos-public-ci/issues/69) | Cross-strategy signal collision | HOLD | Multi-strategy aligned intents, positions and multi-asset OOS |
 
 ## Meaning of evidence fields
 
