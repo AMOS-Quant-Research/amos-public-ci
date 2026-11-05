@@ -1,6 +1,6 @@
 {
   "contract": "amos.ae.math-edge-dictionary.v1",
-  "generated_utc_date": "2026-11-04",
+  "generated_utc_date": "2026-11-05",
   "scope": "Research-only consolidated index of verified AMOS Issue intakes; not a deployable strategy registry.",
   "canonical_intake": "GitHub Issues in AMOS-Quant-Research/amos-public-ci",
   "execution_registry": "research/vibe_xauusd/ae_candidate_registry.json (separate PR #46 branch; Kelly parameters only)",
@@ -308,6 +308,56 @@
       "status": "HOLD",
       "next_gate": "Prove finite-action theorem assumptions and independent Bellman numerical test; add switching-cost state if needed.",
       "issue_url": "https://github.com/AMOS-Quant-Research/amos-public-ci/issues/65",
+      "source_class": "ORIGINAL_AND_AE_DERIVED_SEPARATE",
+      "evidence": {
+        "original_source_from_issue": true,
+        "source_math_independently_reproduced": false,
+        "ae_strategy_implemented": false,
+        "native_run_id": null,
+        "native_fill_count": null,
+        "pf": null,
+        "ev": null,
+        "max_dd": null,
+        "oos_verified": false,
+        "cost_calibrated": false,
+        "decision": "HOLD"
+      }
+    },
+    {
+      "id": "AE-MATH-0069",
+      "issue": 69,
+      "title": "Cross-strategy signal collision / common-trade penalty",
+      "category": [
+        "portfolio_risk",
+        "game_theory",
+        "inventory_control",
+        "signal_collision"
+      ],
+      "paper": {
+        "arxiv": "2611.03453",
+        "url": "https://arxiv.org/abs/2611.03453",
+        "type": "preprint"
+      },
+      "original": {
+        "model": "x_NE=theta*s/[gamma*sigma^2+L*(N+1)]; x_SO=theta*s/[gamma*sigma^2+2*L*N]; maximize m^T*w-(gamma/2)*w^T*Sigma*w-(phi/2)*(c^T*w)^2, 1^T*w=1",
+        "novelty": "Specific cross-allocator collision toll and feedback stability; underlying Nash, quadratic impact and PCA are foundational. PC1 is only a proxy, not measured AI crowding."
+      },
+      "ae_derived": {
+        "mapping": "SHADOW-only internal cross-strategy signed-exposure overlap penalty before the existing Risk Governor; external market crowding remains a separate unverified hypothesis.",
+        "failure_modes": [
+          "One XAUUSD strategy cannot identify multi-agent collision",
+          "Need aligned multi-strategy intents/positions and multi-asset OOS",
+          "PC1 may reflect market beta; covariance eigengap and execution costs may invalidate proxy",
+          "Source external market impact coefficient cannot be calibrated from L1 QuoteTicks"
+        ]
+      },
+      "blockers": [
+        "BLOCKED_MULTISTRATEGY_INPUTS",
+        "NO_NATIVE_TEST"
+      ],
+      "status": "HOLD",
+      "next_gate": "Collect immutable multi-strategy intent/position panel, validate ORIGINAL Nash and SPD portfolio equations independently, then test AE_DERIVED overlap shadow gate with realistic OOS costs.",
+      "issue_url": "https://github.com/AMOS-Quant-Research/amos-public-ci/issues/69",
       "source_class": "ORIGINAL_AND_AE_DERIVED_SEPARATE",
       "evidence": {
         "original_source_from_issue": true,
