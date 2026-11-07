@@ -14,7 +14,7 @@ def scan_quotes(path: str | Path) -> pl.LazyFrame:
     ts_type = schema["ts_event"]
     if not isinstance(ts_type, pl.Datetime) or ts_type.time_zone != "UTC":
         raise ValueError("ts_event must be a timezone-aware UTC Datetime")
-    if schema["bid"] not in pl.NUMERIC_DTYPES or schema["ask"] not in pl.NUMERIC_DTYPES:
+    if not schema["bid"].is_numeric() or not schema["ask"].is_numeric():
         raise ValueError("bid/ask must be numeric")
     return frame.select("ts_event", "bid", "ask").with_columns(
         (pl.col("ask") - pl.col("bid")).alias("spread")
