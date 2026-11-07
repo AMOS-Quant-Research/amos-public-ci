@@ -8,12 +8,23 @@ def scan_quotes(path: str | Path) -> pl.LazyFrame:
     """Read parquet quote ticks; timestamp must be UTC datetime (not strings)."""
     frame = pl.scan_parquet(str(path))
     schema = frame.collect_schema()
+    ts_source = "ts_event" if "ts_event" in schema else "timestamp" if "timestamp" in schema else "ts" if "ts" in schema else None
+    if ts_source and ts_source != "ts_event":
+        frame = frame.rename({ts_source: "ts_event"})
+        schema = frame.collect_schema()
     missing = REQUIRED - set(schema.names())
     if missing:
         raise ValueError(f"Missing quote columns: {sorted(missing)}")
     ts_type = schema["ts_event"]
-    if not isinstance(ts_type, pl.Datetime) or ts_type.time_zone != "UTC":
-        raise ValueError("ts_event must be a timezone-aware UTC Datetime")
+    if isinstance(ts_type, pl.Datetime):
+        if ts_type.time_zone not in ("UTC", None):
+            raise ValueError("ts_event must be UTC or timezone-naive UTC")
+        if ts_type.time_zone is None:
+            frame = frame.with_columns(pl.col("ts_event").dt.replace_time_zone("UTC"))
+    elif ts_type == pl.String:
+        frame = frame.with_columns(pl.col("ts_event").str.to_datetime(time_zone="UTC", strict=True))
+    else:
+        raise ValueError(f"Unsupported timestamp type: {ts_type}")
     if not schema["bid"].is_numeric() or not schema["ask"].is_numeric():
         raise ValueError("bid/ask must be numeric")
     return frame.select("ts_event", "bid", "ask").with_columns(
