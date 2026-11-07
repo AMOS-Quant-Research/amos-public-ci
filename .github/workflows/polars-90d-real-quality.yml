@@ -30,7 +30,7 @@ jobs:
           done
       - name: Audit 90d real quote data
         run: |
-          python scripts/validate_polars_90d.py --glob 'external_raw/xauusd/*.parquet' --start '2026-02-25T00:00:00Z' --end '2026-05-26T23:59:59Z' --output polars_90d_quality.json
+          PYTHONPATH=. python scripts/validate_polars_90d.py --glob 'external_raw/xauusd/*.parquet' --start '2026-02-25T00:00:00Z' --end '2026-05-26T23:59:59Z' --output polars_90d_quality.json
       - name: Save audit evidence
         if: always()
         uses: actions/upload-artifact@v4
