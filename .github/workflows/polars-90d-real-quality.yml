@@ -1,0 +1,41 @@
+name: Polars XAUUSD 90d Real Quote Quality
+on:
+  push:
+    branches: [feat/polars-tick-engine-20261107]
+    paths:
+      - 'modules/polars_tick_engine.py'
+      - 'scripts/validate_polars_90d.py'
+      - '.github/workflows/polars-90d-real-quality.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install -r requirements-polars.txt
+      - name: Fetch upstream raw Bid Ask Parquet
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p external_raw/xauusd
+          base='https://raw.githubusercontent.com/simom1/XAUUSD-history/main/2026'
+          for f in xauusd_2026_02.parquet xauusd_2026_03_early.parquet xauusd_2026_03_mid.parquet xauusd_2026_03_late.parquet xauusd_2026_04.parquet xauusd_2026_05.parquet; do
+            curl -fL --retry 3 --retry-delay 3 "${base}/${f}" -o "external_raw/xauusd/${f}"
+          done
+      - name: Audit 90d real quote data
+        run: |
+          PYTHONPATH=. python scripts/validate_polars_90d.py --glob 'external_raw/xauusd/*.parquet' --start '2026-02-25T00:00:00Z' --end '2026-05-26T23:59:59Z' --output polars_90d_quality.json
+      - name: Save audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: polars-xauusd-90d-quality-${{ github.run_id }}
+          path: polars_90d_quality.json
+          if-no-files-found: warn
+          retention-days: 30
