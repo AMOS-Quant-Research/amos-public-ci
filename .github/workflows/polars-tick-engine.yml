@@ -1,5 +1,7 @@
 name: Polars Tick Engine Tests
 on:
+  push:
+    branches: [feat/polars-tick-engine-20261107]
   pull_request:
     paths:
       - 'modules/polars_tick_engine.py'
