@@ -44,7 +44,8 @@ class SignalEngine:
 '''
 
 DEFAULT={"period":21,"rsi_long":55,"rsi_short":45,"max_spread_atr":0.3}
-def run(catalog,out,*,nim=False,params=None,commission_per_lot=0.0):
+def run(catalog,out,*,nim=False,params=None,commission_per_lot=0.0,
+        mentor_signals=None, mentor_horizon_seconds=1800):
     catalog=Path(catalog).resolve()
     if not catalog.exists():
         raise FileNotFoundError("actual Nautilus ParquetDataCatalog missing")
@@ -52,6 +53,11 @@ def run(catalog,out,*,nim=False,params=None,commission_per_lot=0.0):
         raise ValueError("choose NIM OR supplied parameters")
     if commission_per_lot<0:
         raise ValueError("negative commission")
+    if int(mentor_horizon_seconds) <= 0:
+        raise ValueError("mentor_horizon_seconds must be positive")
+    mentor_signals = Path(mentor_signals).resolve() if mentor_signals else None
+    if mentor_signals is not None and not mentor_signals.is_file():
+        raise FileNotFoundError("mentor signals JSONL missing")
     out=Path(out).resolve()
     out.mkdir(parents=True,exist_ok=True)
     candidate=generate() if nim else None
@@ -76,6 +82,12 @@ def run(catalog,out,*,nim=False,params=None,commission_per_lot=0.0):
     env["PYTHONPATH"]=str(root)+os.pathsep+env.get("PYTHONPATH","")
     args=[sys.executable,str(driver),"--vibe-run-dir",str(rundir),
           "--vibe-request",str(request),"--vibe-evidence",str(evidence)]
+    mentor_labels = rundir/"artifacts/mentor_feature_labels.jsonl"
+    mentor_label_evidence = rundir/"artifacts/mentor_feature_label_evidence.json"
+    if mentor_signals is not None:
+        args += ["--mentor-signals",str(mentor_signals),"--mentor-labels",str(mentor_labels),
+                 "--mentor-label-evidence",str(mentor_label_evidence),
+                 "--mentor-horizon-seconds",str(int(mentor_horizon_seconds))]
     proc=subprocess.run(args,text=True,capture_output=True,timeout=1200,env=env)
     (rundir/"artifacts/driver.log").write_text(proc.stdout+"\n--- STDERR ---\n"+proc.stderr)
     if proc.returncode!=0 or not evidence.exists():
@@ -88,11 +100,20 @@ def run(catalog,out,*,nim=False,params=None,commission_per_lot=0.0):
     fills=int(native.get("diagnostics",{}).get("fills_report_rows",0))
     if fills<1:
         raise ValueError("native simulation returned zero fills")
+    mentor_proof = None
+    if mentor_signals is not None:
+        if not mentor_labels.is_file() or not mentor_label_evidence.is_file():
+            raise RuntimeError("MENTOR_LABELLER_FAILED; missing labels or provenance")
+        mentor_proof = json.loads(mentor_label_evidence.read_text())
+        if (mentor_proof.get("source") != "Nautilus QuoteTick replay" or
+                int(mentor_proof.get("raw_ticks", 0)) != int(native["raw_ticks"])):
+            raise ValueError("mentor labeller provenance does not match native QuoteTick replay")
     result={"contract":"amos.ai-trader.native-research.v1","research_only":True,
             "live_trading":False,"order_permission":"DENIED",
             "candidate_source":"NVIDIA_NIM" if candidate else "DETERMINISTIC_BASELINE",
             "candidate":candidate,"parameters":p,
             "strategy_sha256":hashlib.sha256(source.encode()).hexdigest(),
+            "mentor_feature_labeller":mentor_proof,
             "native_fills_report_rows":fills,"raw_ticks":native["raw_ticks"],
             "kpis":native.get("kpis"),"cost_profile_status":"ASSUMPTION_ONLY",
             "native_protective_sl_tp_orders":False,
@@ -108,8 +129,12 @@ def main():
     ap.add_argument("--output",required=True)
     ap.add_argument("--nim",action="store_true")
     ap.add_argument("--commission-per-lot",type=float,default=0.0)
+    ap.add_argument("--mentor-signals",type=Path,
+                    help="JSONL mentor-feature events to label against this native QuoteTick replay")
+    ap.add_argument("--mentor-horizon-seconds",type=int,default=1800)
     a=ap.parse_args()
-    r=run(a.catalog,a.output,nim=a.nim,commission_per_lot=a.commission_per_lot)
+    r=run(a.catalog,a.output,nim=a.nim,commission_per_lot=a.commission_per_lot,
+          mentor_signals=a.mentor_signals,mentor_horizon_seconds=a.mentor_horizon_seconds)
     print(json.dumps({"raw_ticks":r["raw_ticks"],"fills":r["native_fills_report_rows"],
                       "candidate_source":r["candidate_source"],"research_only":True}))
 if __name__=="__main__":main()
