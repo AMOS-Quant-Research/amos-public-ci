@@ -20,6 +20,8 @@ class Quote:
     timestamp: datetime
     bid: float
     ask: float
+    # Set by the Nautilus bridge so Raw QuoteTick event nanoseconds are retained.
+    ts_event_ns: int | None = None
 
 
 def parse_timestamp(value: str) -> datetime:
@@ -35,7 +37,7 @@ def read_quotes(path: Path) -> list[Quote]:
         ]
     if any(q.ask < q.bid for q in quotes):
         raise ValueError("invalid quote: ask must be >= bid")
-    if any(b.timestamp <= a.timestamp for a, b in zip(quotes, quotes[1:])):
+    if any(_quote_ns(b) <= _quote_ns(a) for a, b in zip(quotes, quotes[1:])):
         raise ValueError("quotes must have strictly increasing timestamps")
     return quotes
 
@@ -45,11 +47,20 @@ def feature_columns(signal: dict[str, Any]) -> dict[str, Any]:
     return {key: value for key, value in signal.items() if key not in reserved}
 
 
+def _timestamp_ns(timestamp: datetime) -> int:
+    return int(timestamp.timestamp() * 1_000_000_000)
+
+
+def _quote_ns(quote: Quote) -> int:
+    return quote.ts_event_ns if quote.ts_event_ns is not None else _timestamp_ns(quote.timestamp)
+
+
 def quote_at_or_after(quotes: list[Quote], timestamp: datetime) -> int:
+    wanted_ns = _timestamp_ns(timestamp)
     lo, hi = 0, len(quotes)
     while lo < hi:
         mid = (lo + hi) // 2
-        if quotes[mid].timestamp < timestamp:
+        if _quote_ns(quotes[mid]) < wanted_ns:
             lo = mid + 1
         else:
             hi = mid
@@ -65,8 +76,9 @@ def score_signal(quotes: list[Quote], signal: dict[str, Any], default_horizon: i
     horizon = int(signal.get("horizon_seconds", default_horizon))
     if start_index >= len(quotes):
         raise ValueError("signal is after final quote")
-    ends_at = quotes[start_index].timestamp + timedelta(seconds=horizon)
-    window = [q for q in quotes[start_index:] if q.timestamp <= ends_at]
+    start_ns = _quote_ns(quotes[start_index])
+    ends_at_ns = start_ns + horizon * 1_000_000_000
+    window = [q for q in quotes[start_index:] if _quote_ns(q) <= ends_at_ns]
     if not window:
         raise ValueError("no quotes available for signal")
 
@@ -89,6 +101,8 @@ def score_signal(quotes: list[Quote], signal: dict[str, Any], default_horizon: i
         "signal_id": signal.get("signal_id", f"{started_at.isoformat()}-{side}"),
         "symbol": signal.get("symbol", "XAUUSD"),
         "timestamp": window[0].timestamp.isoformat(),
+        "entry_ts_event_ns": _quote_ns(window[0]),
+        "exit_ts_event_ns": _quote_ns(window[-1]),
         "side": side,
         "horizon_seconds": horizon,
         "entry_executable_price": entry,
@@ -98,8 +112,8 @@ def score_signal(quotes: list[Quote], signal: dict[str, Any], default_horizon: i
         "mfe_price": mfe,
         "exit_pnl_price": exit_pnl,
         "mfe_to_mae": None if mae == 0 else mfe / mae,
-        "seconds_to_mfe": (window[max_index].timestamp - window[0].timestamp).total_seconds(),
-        "seconds_to_mae": (window[min_index].timestamp - window[0].timestamp).total_seconds(),
+        "seconds_to_mfe": (_quote_ns(window[max_index]) - _quote_ns(window[0])) / 1_000_000_000,
+        "seconds_to_mae": (_quote_ns(window[min_index]) - _quote_ns(window[0])) / 1_000_000_000,
         "target_hit": target_hit,
         "stop_hit": stop_hit,
         "label_positive": bool(target_hit) if target > 0 else exit_pnl > 0,
