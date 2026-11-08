@@ -8,15 +8,17 @@ from __future__ import annotations
 
 import hashlib
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
-
-import pandas as pd
 
 try:  # Supports both repository-root and mentor_feature_lab-local test runs.
     from research.mentor_feature_lab.mentor_feature_scorer import Quote, score_all
 except ModuleNotFoundError:
     from mentor_feature_scorer import Quote, score_all
+
+def _quote_ns(quote: Quote) -> int:
+    return quote.ts_event_ns if quote.ts_event_ns is not None else int(quote.timestamp.timestamp() * 1_000_000_000)
 
 
 def _price(value: Any) -> float:
@@ -34,8 +36,10 @@ def quotes_from_native_ticks(raw_ticks: Iterable[Any]) -> list[Quote]:
             raise ValueError("native QuoteTicks must have strictly increasing ts_event")
         if bid <= 0 or ask < bid:
             raise ValueError("native QuoteTick has crossed or invalid Bid/Ask")
-        # pandas.Timestamp preserves Nautilus nanosecond event precision.
-        quotes.append(Quote(pd.Timestamp(timestamp_ns, unit="ns", tz="UTC"), bid, ask))
+        # Human-readable UTC is paired with the exact ns value used by scoring.
+        seconds, nanos = divmod(timestamp_ns, 1_000_000_000)
+        timestamp = datetime.fromtimestamp(seconds, tz=timezone.utc).replace(microsecond=nanos // 1_000)
+        quotes.append(Quote(timestamp, bid, ask, ts_event_ns=timestamp_ns))
         previous_ns = timestamp_ns
     if not quotes:
         raise ValueError("no native QuoteTicks supplied")
@@ -74,8 +78,8 @@ def label_native_quote_ticks(*, raw_ticks: Iterable[Any], signals_path: Path,
         "order_permission": "DENIED",
         "ohlc_resample_used": False,
         "raw_ticks": len(quotes),
-        "first_ts_event_ns": int(quotes[0].timestamp.value),
-        "last_ts_event_ns": int(quotes[-1].timestamp.value),
+        "first_ts_event_ns": _quote_ns(quotes[0]),
+        "last_ts_event_ns": _quote_ns(quotes[-1]),
         "signals": len(signals),
         "labels": len(labels),
         "signals_sha256": hashlib.sha256(signal_bytes).hexdigest(),
