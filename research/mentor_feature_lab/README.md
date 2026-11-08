@@ -21,3 +21,29 @@ PYTHONPATH=. python -m unittest discover -s tests -v
 ```
 
 `labels.jsonl` is the auditable training dataset. No order is submitted. The next integration step is to emit the same rows from the verified Nautilus QuoteTick replay driver and compare both outputs before using a model or an EA.
+
+
+## Nautilus QuoteTick integration
+
+The native replay driver can now send the **same in-memory QuoteTick sequence**
+to this labeller. It does not route through OHLC prices, does not submit a live
+order, and records a SHA-256 provenance receipt next to the labels.
+
+```bash
+PYTHONPATH=. python -m research.ai_trader.native_run \
+  --catalog /actual/catalog/path \
+  --output /tmp/mentor-native-run \
+  --mentor-signals /path/mentor_signals.jsonl \
+  --mentor-horizon-seconds 1800
+```
+
+On a successful native replay, the output directory contains:
+
+- `native_run/artifacts/mentor_feature_labels.jsonl`
+- `native_run/artifacts/mentor_feature_label_evidence.json`
+- `native_run/artifacts/nautilus_rawtick_evidence.json`
+- `native_research_result.json`
+
+The final result refuses to claim the connection when the labeller's Raw Tick
+count differs from the native replay evidence. A successful native replay and
+its artifacts are still required before claiming any run result.
