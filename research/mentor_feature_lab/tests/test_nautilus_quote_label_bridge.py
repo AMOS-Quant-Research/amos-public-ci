@@ -3,7 +3,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from research.mentor_feature_lab.nautilus_quote_label_bridge import label_native_quote_ticks
+try:  # README test command runs from this lab directory.
+    from research.mentor_feature_lab.nautilus_quote_label_bridge import label_native_quote_ticks
+except ModuleNotFoundError:
+    from nautilus_quote_label_bridge import label_native_quote_ticks
 
 
 class _Tick:
