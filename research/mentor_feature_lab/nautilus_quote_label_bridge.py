@@ -13,7 +13,10 @@ from typing import Any, Iterable
 
 import pandas as pd
 
-from research.mentor_feature_lab.mentor_feature_scorer import Quote, score_all
+try:  # Supports both repository-root and mentor_feature_lab-local test runs.
+    from research.mentor_feature_lab.mentor_feature_scorer import Quote, score_all
+except ModuleNotFoundError:
+    from mentor_feature_scorer import Quote, score_all
 
 
 def _price(value: Any) -> float:
