@@ -172,7 +172,17 @@ def main() -> None:
     ap.add_argument("--vibe-run-dir", required=True)
     ap.add_argument("--vibe-request", required=True)
     ap.add_argument("--vibe-evidence", required=True)
+    ap.add_argument("--mentor-signals", type=Path,
+                    help="JSONL mentor-feature events; enables Raw QuoteTick MAE/MFE labelling")
+    ap.add_argument("--mentor-labels", type=Path,
+                    help="JSONL label output; required with --mentor-signals")
+    ap.add_argument("--mentor-label-evidence", type=Path,
+                    help="JSON provenance output; required with --mentor-signals")
+    ap.add_argument("--mentor-horizon-seconds", type=int, default=1800)
     args = ap.parse_args()
+    mentor_args = (args.mentor_signals, args.mentor_labels, args.mentor_label_evidence)
+    if any(value is not None for value in mentor_args) and not all(value is not None for value in mentor_args):
+        raise SystemExit("--mentor-signals, --mentor-labels and --mentor-label-evidence must be supplied together")
     run_dir = Path(args.vibe_run_dir)
     request = json.loads(Path(args.vibe_request).read_text(encoding="utf-8"))
     config = request["config"]
@@ -184,6 +194,19 @@ def main() -> None:
     raw_ticks = catalog.query(data_cls=QuoteTick, identifiers=[instrument.id.value])
     if not raw_ticks:
         raise SystemExit("no XAUUSD Raw Bid/Ask ticks")
+
+    mentor_label_evidence = None
+    if args.mentor_signals is not None:
+        # Uses this exact native QuoteTick sequence before the simulation starts.
+        # The labeller is research-only and never submits an order.
+        from research.mentor_feature_lab.nautilus_quote_label_bridge import label_native_quote_ticks
+        mentor_label_evidence = label_native_quote_ticks(
+            raw_ticks=raw_ticks,
+            signals_path=args.mentor_signals,
+            labels_path=args.mentor_labels,
+            evidence_path=args.mentor_label_evidence,
+            default_horizon=args.mentor_horizon_seconds,
+        )
     ticks, l1_replacements = _executable_l1(raw_ticks)
     bars = _bars(ticks)
     signal_engine = _load_signal(run_dir / "code" / "signal_engine.py")
@@ -219,6 +242,7 @@ def main() -> None:
                                 "fills_report_rows": 0 if fills_report is None else len(fills_report),
                                 "order_status": [] if orders_report is None or "status" not in orders_report else orders_report["status"].value_counts().to_dict(),
                                 "first_order": None if orders_report is None or orders_report.empty else json.loads(orders_report.iloc[0].to_json(date_format="iso"))},
+                "mentor_feature_labeller": mentor_label_evidence,
                 "cost_model": {"commission_applied": commission, "spread": "native_bid_ask",
                                "slippage_points_per_side": cost["slippage_points_per_side"],
                                "slippage_probability": cost.get("slippage_probability", 0.0),
