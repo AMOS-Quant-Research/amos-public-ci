@@ -39,8 +39,8 @@ class MentorFeatureNativeBridgeSmokeTests(unittest.TestCase):
             self.assertEqual(label["exit_ts_event_ns"], ticks[2].ts_event)
             self.assertEqual(label["entry_executable_price"], 100.2)
             self.assertEqual(label["exit_executable_price"], 100.6)
-            self.assertEqual(label["mae_price"], 0.5)
-            self.assertEqual(label["mfe_price"], 0.4)
+            self.assertAlmostEqual(label["mae_price"], 0.5)
+            self.assertAlmostEqual(label["mfe_price"], 0.4)
 
 
 if __name__ == "__main__":
