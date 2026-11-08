@@ -18,7 +18,7 @@ class MentorFeatureNativeBridgeSmokeTests(unittest.TestCase):
         ticks = [
             _Tick(1_704_067_200_000_000_001, 100.0, 100.2),
             _Tick(1_704_067_201_000_000_007, 99.7, 99.9),
-            _Tick(1_704_067_202_000_000_009, 100.6, 100.8),
+            _Tick(1_704_067_201_900_000_009, 100.6, 100.8),
         ]
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
